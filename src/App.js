@@ -39,11 +39,11 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-
           {/* 1. Public landing page */}
           <Route path="/" element={<Homepage />} />
 
-          {/* Login Route */}
+          {/* Temporarily comment out all other routes to find the build error */}
+          {/*
           <Route
             path="/login"
             element={
@@ -54,7 +54,6 @@ function App() {
             }
           />
 
-          {/* Signup Route */}
           <Route
             path="/signup"
             element={
@@ -65,7 +64,6 @@ function App() {
             }
           />
 
-          {/* Select Template Route - Protected */}
           <Route
             path="/select-template"
             element={
@@ -75,9 +73,8 @@ function App() {
             }
           />
 
-          {/* Editor Route - Now uses a specific path with a dynamic parameter */}
           <Route
-            path="/editor/:resumeId" // Editor should have a unique path
+            path="/editor/:resumeId"
             element={
               <ProtectedRoute>
                 <Editor />
@@ -85,11 +82,8 @@ function App() {
             }
           />
 
-          {/* Paywall Route */}
           <Route path="/paywall" element={<Paywall />} />
-
-          {/* Optional: Catch-all for undefined routes, redirects to home */}
-          {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+          */}
         </Routes>
       </Router>
     </AuthProvider>
