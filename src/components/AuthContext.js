@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/token/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (username, email, password) => {
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/signup/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/signup/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
