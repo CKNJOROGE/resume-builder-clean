@@ -62,7 +62,7 @@ const Editor = () => {
   const fetchResumes = async () => {
     if (!authToken) return;
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/resumes/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       });
       const data = await res.json();

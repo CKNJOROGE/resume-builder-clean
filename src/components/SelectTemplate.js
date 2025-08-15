@@ -83,7 +83,7 @@ const SelectTemplate = () => {
 
   const fetchResumes = async () => {
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/resumes/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -140,7 +140,7 @@ const SelectTemplate = () => {
 
 
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/resumes/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -184,7 +184,7 @@ const SelectTemplate = () => {
     const duplicatedData = JSON.parse(JSON.stringify(resume.data || {}));
 
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/resumes/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,

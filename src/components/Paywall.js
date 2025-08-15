@@ -9,7 +9,7 @@ const Paywall = () => {
   const handlePayment = async () => {
     // 🧪 Simulate payment success — in real app this is called after a gateway redirect or callback
     try {
-      const res = await fetch('${process.env.REACT_APP_API_URL}/api/confirm-payment/', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/confirm-payment/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
