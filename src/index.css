@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base page styling */
+body {
+  @apply font-serif bg-gray-100 text-black;
+}
+
+/* A4 page styles for on-screen preview and PDF export */
+.resume-page {
+  width: 210mm;
+  /* --- FIX IS HERE: Height is made slightly shorter than A4 to prevent double page breaks --- */
+  height: 290mm; 
+  padding: 1cm;
+  box-sizing: border-box;
+  background: #fff;
+  border: none;
+  margin: 0 auto 1rem auto;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.322);
+}
+
+/* Print-specific rules */
+@media print {
+  .resume-page {
+    margin: 0 !important;
+    box-shadow: none !important;
+    height: 290mm; /* Restore full height for actual printing */
+  }
+  
+  #resume-canvas {
+    padding: 0 !important;
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  button,
+  input {
+    display: none !important;
+  }
+}
+
+.page-break-indicator {
+  height: 2px;
+  background-image: linear-gradient(to right, #a0a0a0 50%, transparent 50%);
+  background-size: 20px 1px;
+  background-repeat: repeat-x;
+  width: 100%;
+  margin: 2rem 0;
+}
+
+
+.pdf-generating svg{
+  padding-top: 4px; /* Pushes the icon's content down */
+  padding-bottom: 1.5px; /* Adds space to the bottom, increasing total height */
+  box-sizing: content-box !important; /* Forces padding to be ADDED to the height */
+}
+.pdf-generating .language-rating-dots,
+.pdf-generating .pdf-slider-container {
+  position: relative;
+  top: 8.5px; /* Adjust this value as needed */
+}
+
+.pdf-generating hr {
+  position: relative;
+  top: 8.5px; /* Adjust this value as needed */
+}
