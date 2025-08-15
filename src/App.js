@@ -48,7 +48,7 @@ function App() {
             path="/login"
             element={
               <LoginForm
-                onSuccess={() => window.location.href = '/select-template'}
+                
                 onSwitch={() => window.location.href = '/signup'}
               />
             }
@@ -59,7 +59,7 @@ function App() {
             path="/signup"
             element={
               <SignupForm
-                onSuccess={() => window.location.href = '/select-template'}
+                
                 onSwitch={() => window.location.href = '/login'}
               />
             }

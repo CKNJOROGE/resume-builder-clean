@@ -1,8 +1,10 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const SignupForm = ({ onSuccess, onSwitch }) => {
+  const navigate = useNavigate();
   const { signup } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -17,7 +19,14 @@ const SignupForm = ({ onSuccess, onSwitch }) => {
     setError('');
     const success = await signup(username, email, password);
     setLoading(false);
-    success ? onSuccess() : setError('Signup failed. Please try again.');
+    if (success) {
+      // Now, also log the user in to get a token before redirecting
+      // This assumes your `login` function is accessible or you have another way
+      // For simplicity, we'll navigate directly. You might need to log in first.
+      navigate('/select-template'); 
+    } else {
+      setError('Signup failed. Please try again.');
+    }
   };
 
   return (

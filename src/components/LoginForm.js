@@ -1,8 +1,10 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const LoginForm = ({ onSuccess, onSwitch }) => {
+  const navigate = useNavigate();
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,11 @@ const LoginForm = ({ onSuccess, onSwitch }) => {
     setError('');
     const success = await login(email, password);
     setLoading(false);
-    success ? onSuccess() : setError('Invalid email or password');
+    if (success) {
+      navigate('/select-template');
+    } else {
+      setError('Invalid email or password');
+    };
   };
 
   return (
