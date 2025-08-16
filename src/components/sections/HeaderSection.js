@@ -239,7 +239,9 @@ const HeaderSection = ({
             if (currentSettings.showPhone) {
               contactItems.push(
                 <React.Fragment key="phone">
+                  <div className="pdf-icon-wrapper">
                   <Phone className="w-3 h-3 mr-1 inline-block" />
+                  </div>
                   <span contentEditable suppressContentEditableWarning onBlur={handleFieldEdit('phone')}>
                     {phone}
                   </span>
@@ -249,7 +251,9 @@ const HeaderSection = ({
             if (currentSettings.showEmail) {
               contactItems.push(
                 <React.Fragment key="email">
+                  <div className="pdf-icon-wrapper">
                   <Mail className="w-3 h-3 mr-1 inline-block" />
+                  </div>
                   <span contentEditable suppressContentEditableWarning onBlur={handleFieldEdit('email')}>
                     {email}
                   </span>
@@ -259,7 +263,9 @@ const HeaderSection = ({
             if (currentSettings.showLink && link) { // Only show link if link value exists
               contactItems.push(
                 <React.Fragment key="link">
+                  <div className="pdf-icon-wrapper">
                   <Link className="w-3 h-3 mr-1 inline-block" />
+                  </div>
                   <a
                     href={link}
                     target="_blank"
@@ -276,7 +282,9 @@ const HeaderSection = ({
             if (currentSettings.showLocation) {
               contactItems.push(
                 <React.Fragment key="location">
+                  <div className="pdf-icon-wrapper">
                   <MapPin className="w-3 h-3 mr-1 inline-block" />
+                  </div>
                   <span contentEditable suppressContentEditableWarning onBlur={handleFieldEdit('location')}>
                     {location}
                   </span>

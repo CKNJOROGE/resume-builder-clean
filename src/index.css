@@ -52,10 +52,9 @@ body {
 }
 
 
-.pdf-generating svg{
-  padding-top: 4px; /* Pushes the icon's content down */
-  padding-bottom: 1.5px; /* Adds space to the bottom, increasing total height */
-  box-sizing: content-box !important; /* Forces padding to be ADDED to the height */
+.pdf-generating .pdf-icon-wrapper {
+  padding-top: 1.5px; /* Adjust this value as needed for perfect alignment */
+  display: inline-block; /* Helps with alignment in the header */
 }
 .pdf-generating .language-rating-dots,
 .pdf-generating .pdf-slider-container {
