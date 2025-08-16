@@ -229,7 +229,7 @@ export default function AwardsSection({
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
               {showIcon && (() => {
                 const IconComponent = ICON_MAP[icon];
                 return IconComponent ? (
