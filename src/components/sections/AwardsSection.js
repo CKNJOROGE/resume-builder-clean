@@ -229,7 +229,7 @@ export default function AwardsSection({
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+            <div style={{border: '1px solid #ccc', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
               {showIcon && (() => {
                 const IconComponent = ICON_MAP[icon];
                 return IconComponent ? (
@@ -237,7 +237,7 @@ export default function AwardsSection({
                   <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 " />
                 </div>) : null;
               })()}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <div style={{border: '1px solid #ccc', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 {isActive ? (
                   <textarea
                     id={`name-${idx}`} rows={1} value={name} onChange={e => { e.stopPropagation(); changeAt(idx, 'name', e.target.value); }} onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={() => handleBlur()} placeholder="Award Name" className="award-input" style={{ width: '100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding:'.1rem', background:'#fff', outline:'none', textAlign: (item.alignment || 'left'), resize:'none', overflow:'hidden', boxSizing: 'border-box', color: design.titleColor }} ref={el => (refs.current[`name-${idx}`] = el)}
