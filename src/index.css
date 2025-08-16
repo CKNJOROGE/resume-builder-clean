@@ -53,7 +53,7 @@ body {
 
 
 .pdf-generating .pdf-icon-wrapper {
-  padding-top: 8.5px; /* Adjust this value as needed for perfect alignment */
+  padding-top: 7.5px; /* Adjust this value as needed for perfect alignment */
   display: inline-block; /* Helps with alignment in the header */
 }
 .pdf-generating .language-rating-dots,
