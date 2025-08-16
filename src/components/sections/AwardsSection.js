@@ -212,14 +212,13 @@ export default function AwardsSection({
                       {ICONS.map(iconName => {
                         const IconComponent = ICON_MAP[iconName];
                         return (
-                          <div className="pdf-icon-wrapper">
+                          
                           <IconComponent
                             key={iconName}
                             onClick={() => changeAt(idx, 'icon', iconName)}
                             className="w-6 h-6 cursor-pointer text-gray-500"
                             style={{ opacity: icon === iconName ? 1 : 0.5 }}
                           />
-                          </div>
                         );
                       })}
                     </div>)}
@@ -233,7 +232,7 @@ export default function AwardsSection({
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
               {showIcon && (() => {
                 const IconComponent = ICON_MAP[icon];
-                return IconComponent ? <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 relative top-2" /> : null;
+                return IconComponent ? (<div className="pdf-icon-wrapper"><IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 relative top-2" /></div>) : null;
               })()}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 {isActive ? (
