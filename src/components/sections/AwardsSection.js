@@ -212,12 +212,14 @@ export default function AwardsSection({
                       {ICONS.map(iconName => {
                         const IconComponent = ICON_MAP[iconName];
                         return (
+                          <div className="pdf-icon-wrapper">
                           <IconComponent
                             key={iconName}
                             onClick={() => changeAt(idx, 'icon', iconName)}
                             className="w-6 h-6 cursor-pointer text-gray-500"
                             style={{ opacity: icon === iconName ? 1 : 0.5 }}
                           />
+                          </div>
                         );
                       })}
                     </div>)}
