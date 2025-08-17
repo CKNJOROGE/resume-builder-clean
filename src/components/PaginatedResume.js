@@ -2,7 +2,7 @@ import React, { useState, useRef, useLayoutEffect, useMemo } from 'react';
 
 const MM_TO_PX = 96 / 25.4;
 const mmToPx = (mm) => mm * MM_TO_PX;
-const PAGE_HEIGHT_PX = mmToPx(297);
+const PAGE_HEIGHT_PX = mmToPx(290);
 const PAGE_WIDTH_PX = mmToPx(210);
 const GRID_GAP_PX = 20;
 const SAFETY_MARGIN_PX = 1;
