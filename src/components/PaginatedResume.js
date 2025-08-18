@@ -90,7 +90,7 @@ const PaginatedResume = (props) => {
         const list = (column === 'left') ? leftItems : rightItems;
 
         if (key === 'myTime') { // Add this special condition
-          if (sectionData && sectionData.length > 0) {
+          if (sectionData ) {
             // Treat the entire section as a single, indivisible item
             list.push({ id: key, sectionKey: key, data: sectionData, isSingle: true, index: 0 });
           }

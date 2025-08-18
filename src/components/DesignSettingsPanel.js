@@ -4,11 +4,11 @@ const fonts = ['Rubik', 'Open Sans', 'Lato', 'Roboto', 'Merriweather'];
 
 // Define your color presets here
 const COLOR_PRESETS = [
-  { id: 'preset1', titleColor: '#000000', subtitleColor: '#1e90ff', label: 'Blue Shades' }, // Outer: Blue, Inner: Light Blue
-  { id: 'preset2', titleColor: '#000000', subtitleColor: '#6f7878', label: 'Brown & Grey' }, // Outer: Brown, Inner: Light Grey
-  { id: 'preset3', titleColor: '#002b7f', subtitleColor: '#56acf2', label: 'Green Shades' }, // Outer: Green, Inner: Light Green
-  { id: 'preset4', titleColor: '#19273c', subtitleColor: '#3c6df0', label: 'Red Shades' },   // Outer: Red, Inner: Light Red
-  { id: 'preset5', titleColor: '#8a0202', subtitleColor: '#f96b07', label: 'Purple Shades' },// Outer: Purple, Inner: Light Purple
+  { id: 'preset1', titleColor: '#000000', subtitleColor: '#1e90ff', label: 'Blue Shades' }, 
+  { id: 'preset2', titleColor: '#000000', subtitleColor: '#6f7878', label: 'Brown & Grey' }, 
+  { id: 'preset3', titleColor: '#002b7f', subtitleColor: '#56acf2', label: 'Green Shades' }, 
+  { id: 'preset4', titleColor: '#19273c', subtitleColor: '#3c6df0', label: 'Red Shades' },   
+  { id: 'preset5', titleColor: '#8a0202', subtitleColor: '#f96b07', label: 'Purple Shades' },
 ];
 
 const DesignSettingsPanel = ({ design = {}, handleEdit, onClose }) => {
