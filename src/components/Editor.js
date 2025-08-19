@@ -17,7 +17,7 @@ const DEFAULT_SECTION_ENTRY = {
   experience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
   education: { degree: '', institution: '', dates: '', location: '', description: '' },
   projects: { title: '', description: '', link: '' },
-  skills: '',
+  skills: {skill:''},
   courses: { title: '', provider: '', date: '' },
   achievements: { title: '', description: '', icon: 'Gem', showIcon: true },
   additionalExperience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
@@ -30,6 +30,7 @@ const DEFAULT_SECTION_ENTRY = {
   passions: '',
   professionalStrengths: { title: '', description: '', icon: 'Gem', uppercase: false, showIcon: true, showDescription: true },
   references: { name: '', title: '', contact: '' },
+  myTime: { label: 'New Activity', value: 100, alignment: 'left' },
   volunteering: { title: '', organization: '', location: '', dates: '', description: '', bullets: [''] },
 };
 
@@ -170,18 +171,11 @@ const handleDownloadPdf = async () => {
 
       html2pdf().from(clone).set(opt).toPdf().get('pdf').then(pdf => {
         const totalPages = pdf.internal.getNumberOfPages();
-        const blankPages = [];
 
-        for (let i = totalPages; i >= 1; i--) {
-          const page = pdf.internal.pages[i];
-          if (page && page.length <= 1) {
-            blankPages.push(i);
-          }
+        // 2. Unconditionally delete the last page if there is more than one
+        if (totalPages > 1) {
+            pdf.deletePage(totalPages);
         }
-
-        blankPages.forEach(pageNum => {
-          pdf.deletePage(pageNum);
-        });
 
         pdf.save('my_resume.pdf');
 
