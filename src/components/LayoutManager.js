@@ -16,6 +16,7 @@ const sectionLabels = {
   myTime: 'My Time',
   industrialExpertise: 'Industrial Expertise',
   awards: 'Awards',
+  keyAchievements: 'Key Achievements',
   professionalStrengths: 'Professional Strengths',
   books: 'Books',
   volunteering: 'Volunteering',

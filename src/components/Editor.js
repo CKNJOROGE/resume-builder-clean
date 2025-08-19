@@ -17,7 +17,7 @@ const DEFAULT_SECTION_ENTRY = {
   experience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
   education: { degree: '', institution: '', dates: '', location: '', description: '' },
   projects: { title: '', description: '', link: '' },
-  skills: {skill:''},
+  skills: '',
   courses: { title: '', provider: '', date: '' },
   achievements: { title: '', description: '', icon: 'Gem', showIcon: true },
   additionalExperience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
@@ -171,11 +171,18 @@ const handleDownloadPdf = async () => {
 
       html2pdf().from(clone).set(opt).toPdf().get('pdf').then(pdf => {
         const totalPages = pdf.internal.getNumberOfPages();
+        const blankPages = [];
 
-        // 2. Unconditionally delete the last page if there is more than one
-        if (totalPages > 1) {
-            pdf.deletePage(totalPages);
+        for (let i = totalPages; i >= 1; i--) {
+          const page = pdf.internal.pages[i];
+          if (page && page.length <= 1) {
+            blankPages.push(i);
+          }
         }
+
+        blankPages.forEach(pageNum => {
+          pdf.deletePage(pageNum);
+        });
 
         pdf.save('my_resume.pdf');
 
