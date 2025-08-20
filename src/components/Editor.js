@@ -170,20 +170,15 @@ const handleDownloadPdf = async () => {
       };
 
       html2pdf().from(clone).set(opt).toPdf().get('pdf').then(pdf => {
+        // 1. Get the total number of pages
         const totalPages = pdf.internal.getNumberOfPages();
-        const blankPages = [];
 
-        for (let i = totalPages; i >= 1; i--) {
-          const page = pdf.internal.pages[i];
-          if (page && page.length <= 1) {
-            blankPages.push(i);
-          }
+        // 2. Unconditionally delete the last page if there is more than one
+        if (totalPages > 1) {
+            pdf.deletePage(totalPages);
         }
 
-        blankPages.forEach(pageNum => {
-          pdf.deletePage(pageNum);
-        });
-
+        // 3. Save the modified PDF
         pdf.save('my_resume.pdf');
 
       }).catch(err => {
