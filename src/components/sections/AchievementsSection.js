@@ -317,11 +317,22 @@ export default function AchievementsSection({
                 </div>
               </div>
             )}
-            <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.5rem' : '0', alignItems: 'baseline' }}>
+            
+            {/* START: Code changes are here */}
+            {/* 1. Changed alignItems from 'baseline' to 'flex-start' */}
+            <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.5rem' : '0', alignItems: 'flex-start' }}>
                 {currentItemData.showIcon && (() => {
                   const IconComponent = ICON_MAP[currentItemData.icon];
-                  return IconComponent ? <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 relative top-1.5" /> : null;
+                  return IconComponent ? (
+                    // 2. Wrapped the IconComponent in the pdf-icon-wrapper div
+                    <div className="pdf-icon-wrapper">
+                      {/* 3. Removed relative positioning classes */}
+                      <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0" />
+                    </div>
+                  ) : null;
                 })()}
+              {/* END: Code changes are here */}
+              
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
                 {settings.title && (
                   isFocused ? (

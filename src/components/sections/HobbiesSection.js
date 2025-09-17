@@ -235,11 +235,20 @@ export default function HobbiesSection({
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.1rem' : '0', alignItems: 'baseline' }}>
+            {/* START: Code changes are here */}
+            <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.1rem' : '0', alignItems: 'flex-start' }}>
               {currentItemData.showIcon && (() => {
                 const IconComponent = ICON_MAP[currentItemData.icon];
-                return IconComponent ? <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 relative top-1.5" /> : null;
+                return IconComponent ? (
+                  // 2. Wrap the icon in the pdf-icon-wrapper div
+                  <div className="pdf-icon-wrapper">
+                    {/* 3. Remove the relative positioning classes */}
+                    <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0" />
+                  </div>
+                ) : null;
               })()}
+              {/* END: Code changes are here */}
+
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 {currentItemData.showTitle && (isFocused ? (<textarea id={`title-${idx}`} rows={1} value={currentItemData.title} onChange={e=>changeField(idx,'title',e.target.value)} onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Interest / Passion" className="hobby-input" style={{ width:'100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius:'.25rem', padding:'0.2rem', background:'#fff', outline:'none', textAlign:currentItemData.alignment, resize:'none', overflow:'hidden', boxSizing: 'border-box', color: design.titleColor, }} ref={el => (refs.current[`title-${idx}`] = el)} />) : (<div className="hobby-input" style={{ width:'100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, textAlign:currentItemData.alignment, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.1rem', color: currentItemData.title.trim() === '' ? '#a0a0a0' : design.titleColor, minHeight: '1.5rem' }} onClick={() => handleFocus(idx)}>{currentItemData.title || 'Interest / Passion'}</div>))}
                 {currentItemData.showDescription && (isFocused ? (<textarea ref={el => (refs.current[`desc-${idx}`] = el)} value={currentItemData.description} onChange={e=>changeField(idx,'description',e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Why it matters..." className="hobby-input" style={{ width:'100%', border:isFocused?'1px solid #ccc':'none', borderRadius:'.25rem', padding:'0.2rem', fontSize: `${(0.6 + offset).toFixed(3)}rem`, resize:'vertical', minHeight:'40px', background:'#fff', outline:'none', textAlign:currentItemData.alignment, boxSizing: 'border-box', color: '#080808' }} />) : (<div className="hobby-input" style={{ width:'100%', fontSize: `${(0.6 + offset).toFixed(3)}rem`, textAlign:currentItemData.alignment, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.1rem', color: currentItemData.description.trim() === '' ? '#a0a0a0' : '#080808', minHeight: '2rem' }} onClick={() => handleFocus(idx)}>{currentItemData.description || 'Why it matters...'}</div>))}

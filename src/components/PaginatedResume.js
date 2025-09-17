@@ -4,7 +4,6 @@ const MM_TO_PX = 96 / 25.4;
 const mmToPx = (mm) => mm * MM_TO_PX;
 const PAGE_HEIGHT_PX = mmToPx(290);
 const PAGE_WIDTH_PX = mmToPx(210);
-const GRID_GAP_PX = 20;
 const SAFETY_MARGIN_PX = 1;
 
 const sectionLabels = {
@@ -38,7 +37,7 @@ const PaginatedResume = (props) => {
     handleEdit,
     design,
     uploadProfileImage,
-    changeSummaryAlignment 
+    changeSummaryAlignment
   } = props;
 
   const [pages, setPages] = useState(null);
@@ -54,6 +53,7 @@ const PaginatedResume = (props) => {
     titleColor = '#002b7f',
     subtitleColor = '#56acf2',
     margin = 1,
+    spacing = 1.5,
   } = design;
 
   const sectionStyle = { color: subtitleColor, fontFamily: font, fontSize: `${fontSize}px`, lineHeight };
@@ -77,6 +77,9 @@ const PaginatedResume = (props) => {
   useLayoutEffect(() => {
     if (!leftMeasureRef.current || !rightMeasureRef.current || !titleMeasurementRef.current) return;
 
+    // We assume a standard browser font size of 16px for rem-to-px conversion in calculations
+    const spacingInPx = spacing * 16;
+
     const animationFrameId = requestAnimationFrame(() => {
       const headerHeight = headerMeasurementRef.current?.offsetHeight || 0;
       const titleHeight = titleMeasurementRef.current?.offsetHeight || 40;
@@ -84,22 +87,19 @@ const PaginatedResume = (props) => {
       const leftItems = [];
       const rightItems = [];
 
-     
+
       sectionRenderList.forEach(({ key, column }) => {
         const sectionData = resumeData[key];
         const list = (column === 'left') ? leftItems : rightItems;
 
-        if (key === 'myTime') { // Add this special condition
+        if (key === 'myTime') {
           if (sectionData ) {
-            // Treat the entire section as a single, indivisible item
             list.push({ id: key, sectionKey: key, data: sectionData, isSingle: true, index: 0 });
           }
-  // Only skip if the section's data is truly missing
         } else if (sectionData !== undefined && sectionData !== null) {
           const list = (column === 'left') ? leftItems : rightItems;
 
           if (Array.isArray(sectionData)) {
-            // Handle array sections (like Experience). If empty, still add it so its title can be rendered.
             if (sectionData.length === 0) {
               list.push({ id: key, sectionKey: key, data: [], isSingle: true, index: 0 });
             } else {
@@ -108,7 +108,6 @@ const PaginatedResume = (props) => {
               });
             }
           } else {
-            // Handle non-array sections (like Summary), including empty strings.
             list.push({ id: key, sectionKey: key, data: sectionData, isSingle: true, index: 0 });
           }
         }
@@ -139,8 +138,6 @@ const PaginatedResume = (props) => {
           }
         });
 
-
-
       const pagesArr = [];
       let leftItemIndex = 0;
       let rightItemIndex = 0;
@@ -164,7 +161,7 @@ const PaginatedResume = (props) => {
               const h = heights[item.id] || 0;
               const isFirstOfKindOnPage = !currentPage.left[item.sectionKey];
               const effectiveTitleHeight = isFirstOfKindOnPage ? titleHeight : 0;
-              const gap = Object.values(currentPage.left).flat().length > 0 || (isFirstOfKindOnPage && Object.keys(currentPage.left).length > 0) ? GRID_GAP_PX : 0;
+              const gap = Object.values(currentPage.left).flat().length > 0 || (isFirstOfKindOnPage && Object.keys(currentPage.left).length > 0) ? spacingInPx : 0;
               const heightWithSpacing = h + effectiveTitleHeight + gap;
 
               if (currentLeftHeight + heightWithSpacing <= availableHeight) {
@@ -186,7 +183,7 @@ const PaginatedResume = (props) => {
               const h = heights[item.id] || 0;
               const isFirstOfKindOnPage = !currentPage.right[item.sectionKey];
               const effectiveTitleHeight = isFirstOfKindOnPage ? titleHeight : 0;
-              const gap = Object.values(currentPage.right).flat().length > 0 || (isFirstOfKindOnPage && Object.keys(currentPage.right).length > 0) ? GRID_GAP_PX : 0;
+              const gap = Object.values(currentPage.right).flat().length > 0 || (isFirstOfKindOnPage && Object.keys(currentPage.right).length > 0) ? spacingInPx : 0;
               const heightWithSpacing = h + effectiveTitleHeight + gap;
 
               if (currentRightHeight + heightWithSpacing <= availableHeight) {
@@ -249,14 +246,12 @@ const PaginatedResume = (props) => {
     const Component = sectionComponentMap[sectionKey];
     if (!Component || !items || items.length === 0) return null;
     const sectionData = resumeData[sectionKey];
-    
+
     const isFirstChunkOfSection = Array.isArray(sectionData) ? items.includes(0) : true;
 
     return (
-      <div key={sectionKey} className="no-break" style={{
-        marginBottom: `${GRID_GAP_PX}px`,
-        border: '1px' // Add this line for debugging
-      }}>
+      // --- FIX #3: Removed the redundant marginBottom from this wrapper ---
+      <div key={sectionKey} className="no-break" style={{ border: '1px' }}>
         {isFirstChunkOfSection && (
           <div>
             <h2 style={{...headingStyle, fontSize: '14px', color: '#000000' }} className="text-xl">{sectionLabels[sectionKey] || sectionKey}</h2>
@@ -290,11 +285,13 @@ const PaginatedResume = (props) => {
         pages.map((page, pageIndex) => (
           <div key={pageIndex} className="resume-page" style={{ padding: `${margin}cm` }}>
             {pageIndex === 0 && headerComponent}
+            {/* --- FIX #1: Restored the fixed horizontal gap between columns --- */}
             <div className="grid grid-cols-8 gap-5">
-              <div className="col-span-5 flex flex-col gap-0">
+              {/* --- FIX #2: Applied dynamic VERTICAL gap to each column --- */}
+              <div className="col-span-5 flex flex-col" style={{ gap: `${spacing}rem` }}>
                 {Object.entries(page.left).map(([sectionKey, items]) => renderPageComponent(sectionKey, items))}
               </div>
-              <div className="col-span-3 flex flex-col gap-0">
+              <div className="col-span-3 flex flex-col" style={{ gap: `${spacing}rem` }}>
                  {Object.entries(page.right).map(([sectionKey, items]) => renderPageComponent(sectionKey, items))}
               </div>
             </div>
