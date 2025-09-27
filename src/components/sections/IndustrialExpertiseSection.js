@@ -19,6 +19,7 @@ export default function IndustrialExpertiseSection({
   headingStyle = {},
   design = {}
 }) {
+  const { disableSliders = false, horizontalFlow = false } = design;
   const sliderPx = parseFloat(design.fontSize) || 0;
   const offset = sliderPx / 30;
   const [activeIdx, setActiveIdx] = useState(null);
@@ -30,7 +31,6 @@ export default function IndustrialExpertiseSection({
   const refs = useRef({});
   const blurTimeout = useRef(null);
 
-  // Normalize incoming data
   useEffect(() => {
     if (!isMeasuring && data.length > 0) {
       const cleanedData = data.map(item => ({ ...DEFAULT_ITEM, ...item }));
@@ -40,22 +40,15 @@ export default function IndustrialExpertiseSection({
     }
   }, [data, onEdit, isMeasuring]);
 
-  // Click outside detection
   useEffect(() => {
     const handleClickOutside = e => {
       if (activeIdx == null) return;
-
       const cardEl = cardRefs.current[activeIdx];
-      const clickedInsideCard =
-        cardEl && cardEl.contains(e.target);
-      const clickedInsideToolbar =
-        toolbarRef.current && toolbarRef.current.contains(e.target);
-      const clickedInsideSettings =
-        settingsRef.current && settingsRef.current.contains(e.target);
-
+      const clickedInsideCard = cardEl && cardEl.contains(e.target);
+      const clickedInsideToolbar = toolbarRef.current && toolbarRef.current.contains(e.target);
+      const clickedInsideSettings = settingsRef.current && settingsRef.current.contains(e.target);
       if (!clickedInsideCard && !clickedInsideToolbar && !clickedInsideSettings) {
-        const isInputField =
-          e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+        const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
         if (!isInputField) {
           setActiveIdx(null);
           setSettingsMode(false);
@@ -66,7 +59,6 @@ export default function IndustrialExpertiseSection({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeIdx]);
 
-  // Auto-resize textarea when active
   useEffect(() => {
     if (activeIdx !== null) {
       const skillEl = refs.current[`skill-${activeIdx}`];
@@ -145,16 +137,19 @@ export default function IndustrialExpertiseSection({
   const measurementStyle = isMeasuring
     ? { visibility: 'hidden', pointerEvents: 'none' }
     : {};
+  
+  // --- NEW: Define a conditional style for the main container ---
+  const containerStyle = {
+    ...sectionStyle,
+    ...(horizontalFlow && {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+    })
+  };
 
   return (
-    <div
-      style={{
-        ...sectionStyle,
-        breakInside: 'auto',
-        WebkitColumnBreakInside: 'auto',
-        pageBreakInside: 'auto'
-      }}
-    >
+    <div style={containerStyle}>
       {!itemsToRender && data.length === 0 && (
         <button
           onClick={() => {
@@ -178,23 +173,29 @@ export default function IndustrialExpertiseSection({
         if (idx >= data.length) return null;
         const item = data[idx];
         const isActive = activeIdx === idx;
+        
+        // --- NEW: Define conditional style for each item ---
+        const itemStyle = {
+            position: 'relative',
+            padding: isActive ? '0.2rem 0.75rem' : '0.2rem 0.5rem',
+            cursor: 'pointer',
+            background: isActive ? '#f9fafb' : 'transparent',
+            borderBottom: horizontalFlow ? 'none' : '1px solid #e5e7eb',
+            borderRadius: '0.375rem',
+            breakInside: 'avoid',
+            ...(horizontalFlow && {
+                border: '1px solid #e5e7eb',
+                flexGrow: 1,
+                minWidth: '150px',
+            })
+        };
 
         return (
           <div
             key={idx}
             ref={el => (cardRefs.current[idx] = el)}
             onClick={isActive ? undefined : () => toggleCard(idx)}
-            style={{
-              position: 'relative',
-              padding: isActive ? '0.2rem 0.75rem' : '0.2rem 0.5rem',
-              cursor: 'pointer',
-              background: isActive ? '#f9fafb' : 'transparent',
-              borderBottom: '1px solid #e5e7eb',
-              borderRadius: isActive ? '0.375rem' : '0',
-              breakInside: 'avoid',
-              WebkitColumnBreakInside: 'avoid',
-              pageBreakInside: 'avoid'
-            }}
+            style={itemStyle}
             onMouseDown={e => e.stopPropagation()}
           >
             {!isMeasuring && isActive && !settingsMode && (
@@ -308,7 +309,7 @@ export default function IndustrialExpertiseSection({
                   resize: 'none',
                   overflow: 'hidden',
                   boxSizing: 'border-box',
-                  marginBottom: item.showSlider ? '0.5rem' : 0
+                  marginBottom: item.showSlider && !disableSliders ? '0.5rem' : 0
                 }}
                 ref={el => (refs.current[`skill-${idx}`] = el)}
               />
@@ -326,18 +327,17 @@ export default function IndustrialExpertiseSection({
                     (item.skill || '').trim() === ''
                       ? '#a0a0a0'
                       : 'inherit',
-                  minHeight: '1.5rem',
+                  minHeight: '24px',
                   width: '100%',
                   boxSizing: 'border-box',
-                  marginBottom: item.showSlider ? '0.5rem' : 0
+                  marginBottom: item.showSlider && !disableSliders ? '0.5rem' : 0
                 }}
               >
                 {item.skill || 'Skill name'}
               </div>
             )}
 
-            {/* Sliders */}
-            {item.showSlider && item.sliderStyle === 'knob' && (
+            {item.showSlider && !disableSliders && item.sliderStyle === 'knob' && (
               <input
                 type="range"
                 min={0}
@@ -349,15 +349,13 @@ export default function IndustrialExpertiseSection({
                 style={{
                   width: '100%',
                   marginBottom: isActive ? '0.5rem' : 0,
-                  border: isActive ? '1px solid #ccc' : 'none',
-                  borderRadius: isActive ? '4px' : 0,
                   ...measurementStyle
                 }}
                 onClick={e => !isMeasuring && e.stopPropagation()}
               />
             )}
 
-            {item.showSlider && item.sliderStyle === 'segments' && (
+            {item.showSlider && !disableSliders && item.sliderStyle === 'segments' && (
               <div
                 className="pdf-slider-container"
                 style={{
@@ -387,7 +385,7 @@ export default function IndustrialExpertiseSection({
               </div>
             )}
 
-            {item.showSlider && item.sliderStyle === 'dashed' && (
+            {item.showSlider && !disableSliders && item.sliderStyle === 'dashed' && (
               <div
                 className="pdf-slider-container"
                 style={{
@@ -418,7 +416,7 @@ export default function IndustrialExpertiseSection({
               </div>
             )}
 
-            {item.showSlider && item.sliderStyle === 'gradient' && (
+            {item.showSlider && !disableSliders && item.sliderStyle === 'gradient' && (
               <div
                 className="pdf-slider-container"
                 style={{

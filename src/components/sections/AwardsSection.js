@@ -22,6 +22,7 @@ export default function AwardsSection({
   headingStyle = {},
   design = {},
 }) {
+  const { disableIcons = false } = design;
   const sliderPx = parseFloat(design.fontSize) || 0;
   const offset = sliderPx / 30;
   const [activeIdx, setActiveIdx] = useState(null);
@@ -230,7 +231,7 @@ export default function AwardsSection({
             )}
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
-              {showIcon && (() => {
+              {showIcon && !disableIcons && (() => {
                 const IconComponent = ICON_MAP[icon];
                 return IconComponent ? (
                 <div className="pdf-icon-wrapper">

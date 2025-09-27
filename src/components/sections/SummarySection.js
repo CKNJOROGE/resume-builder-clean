@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles } from 'lucide-react'; // Import the icon
 
 const ALIGNMENTS = ['left', 'center', 'right', 'justify'];
 
@@ -19,6 +20,13 @@ export default function SummarySection({
   const [local, setLocal] = useState(initialEntries.length ? initialEntries : ['']);
   const [focusIdx, setFocusIdx] = useState(null);
   const [showAlignOptions, setShowAlignOptions] = useState(false);
+
+  // --- STATE FOR THE AI FEATURE ---
+  const [selectedText, setSelectedText] = useState('');
+  const [popupPosition, setPopupPosition] = useState(null);
+  const [suggestion, setSuggestion] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null });
 
   const refs = useRef([]);
   const alignRef = useRef(null);
@@ -55,6 +63,58 @@ export default function SummarySection({
   const commit = arr => {
     setLocal(arr);
     onEdit(arr);
+  };
+
+  // --- HELPER FUNCTIONS FOR THE AI FEATURE ---
+  const handleTextSelect = (e, entryIndex) => {
+    const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
+    if (text.trim().length > 5) {
+      const rect = e.target.getBoundingClientRect();
+      setPopupPosition({
+        top: rect.top + window.scrollY - 35,
+        left: rect.left + window.scrollX,
+      });
+      setSelectedText(text);
+      setActiveTextarea({ entryIndex });
+    } else {
+      setPopupPosition(null);
+    }
+  };
+
+  const handleRephraseClick = async () => {
+    if (!selectedText) return;
+    setIsLoadingAI(true);
+    setSuggestion('');
+    
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rephrase/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: selectedText }),
+      });
+      const data = await response.json();
+      if (data.suggestion) {
+        setSuggestion(data.suggestion);
+      }
+    } catch (error) {
+      console.error("Error fetching AI suggestion:", error);
+      alert("Could not get AI suggestion. Please try again.");
+    } finally {
+      setIsLoadingAI(false);
+      setPopupPosition(null);
+    }
+  };
+
+  const acceptSuggestion = () => {
+    const { entryIndex } = activeTextarea;
+    const originalText = local[entryIndex];
+    const updatedText = originalText.replace(selectedText, suggestion);
+
+    const newLocal = [...local];
+    newLocal[entryIndex] = updatedText;
+    commit(newLocal);
+
+    setSuggestion('');
   };
 
   const handleChange = (i, e) => {
@@ -103,15 +163,42 @@ export default function SummarySection({
   };
 
   const currentTextAlign = design.summaryAlign || 'left';
-
-  // FIX: Determine which indices to render. Use itemsToRender if available, otherwise generate from local state.
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : local.map((_, i) => i);
 
   return (
     <div
       style={{ position: 'relative', backgroundColor: focusIdx != null ? '#f9fafb' : 'transparent', padding: focusIdx != null ? '0.5rem' : 0 }}
-      onMouseDown={e => e.stopPropagation()}
     >
+      {/* --- UI FOR THE AI FEATURE --- */}
+      {popupPosition && (
+        <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
+          <button
+            onMouseDown={handleRephraseClick} // Using onMouseDown for reliability
+            className="flex items-center gap-1 bg-purple-600 text-white px-2 py-1 rounded-md text-xs shadow-lg hover:bg-purple-700 transition-transform transform hover:scale-105"
+            disabled={isLoadingAI}
+          >
+            <Sparkles size={14} className={isLoadingAI ? "animate-spin" : ""} />
+            {isLoadingAI ? 'Thinking...' : 'Improve'}
+          </button>
+        </div>
+      )}
+
+      {suggestion && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-md animate-fade-in-up">
+            <h3 className="font-bold text-lg mb-2">AI Suggestion</h3>
+            <p className="text-sm text-gray-500 mb-1">Original:</p>
+            <blockquote className="bg-gray-100 p-3 rounded text-sm mb-4 border-l-4 border-gray-300">"{selectedText}"</blockquote>
+            <p className="text-sm text-gray-500 mb-1">Suggestion:</p>
+            <blockquote className="bg-purple-100 p-3 rounded text-sm mb-6 border-l-4 border-purple-400">{suggestion}</blockquote>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setSuggestion('')} className="px-4 py-2 rounded text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+              <button onClick={acceptSuggestion} className="px-4 py-2 rounded bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700">Accept Suggestion</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {focusIdx != null && (
         <div
           style={{ fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0, display: 'flex', gap: '0.5rem', background: '#fff', border: '1px solid #ddd', borderRadius: '.5rem', padding: '.25rem ', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', alignItems: 'center' }}
@@ -135,16 +222,13 @@ export default function SummarySection({
         </div>
       )}
       
-      {/* FIX: Map over the stable renderIndices array */}
       {renderIndices.map((idx) => {
-        if (idx >= local.length) return null; // Safeguard
-        
-        // FIX: Get the summary text using the stable index
+        if (idx >= local.length) return null;
         const txt = local[idx];
 
         return focusIdx === idx ? (
           <textarea
-            key={idx} // Use stable index for the key
+            key={idx}
             ref={el => (refs.current[idx] = el)}
             style={{ color: '#080808', fontSize: `${(0.6 + offset).toFixed(3)}rem`, width: '100%', border: focusIdx != null ? '1px solid #ccc' : 'none', borderRadius: '.25rem', padding: '0.5rem', resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', textAlign: currentTextAlign }}
             value={txt}
@@ -155,14 +239,18 @@ export default function SummarySection({
               setFocusIdx(idx);
             }}
             onBlur={() => {
-              blurTimeout.current = setTimeout(() => setFocusIdx(null), 150);
+              blurTimeout.current = setTimeout(() => {
+                setFocusIdx(null);
+                setPopupPosition(null); // Hide AI button on blur
+              }, 150);
             }}
             placeholder="Write your summary..."
             rows={1}
+            onSelect={(e) => handleTextSelect(e, idx)} // Add the onSelect handler
           />
         ) : (
           <div
-            key={idx} // Use stable index for the key
+            key={idx}
             style={{ color: '#080808', fontSize: `${(0.6 + offset).toFixed(3)}rem`, width: '100%', whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', textAlign: currentTextAlign, padding: '0.5rem' }}
             onClick={() => setFocusIdx(idx)}
           >

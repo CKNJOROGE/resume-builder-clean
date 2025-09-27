@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
-import { useParams } from 'react-router-dom';
-import html2pdf from 'html2pdf.js';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import MyResumePDF from './MyResumePDF'; // Adjust path if needed
+import MyResumePDF from './MyResumePDF';
+import html2pdf from 'html2pdf.js';
+import { ArrowLeft } from 'lucide-react';
 
 import TemplateModern from '../templates/TemplateModern';
 import TemplateClassic from '../templates/TemplateClassic';
@@ -12,12 +13,12 @@ import DesignSettingsPanel from './DesignSettingsPanel';
 import SectionTogglePanel from './SectionTogglePanel';
 import LayoutManager from './LayoutManager';
 
-// Defines the "blank" entry for each section that uses a list format
 const DEFAULT_SECTION_ENTRY = {
   experience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
   education: { degree: '', institution: '', dates: '', location: '', description: '' },
   projects: { title: '', description: '', link: '' },
   skills: 'Enter skill here',
+  summary: [''],
   courses: { title: '', provider: '', date: '' },
   achievements: { title: '', description: '', icon: 'Gem', showIcon: true },
   additionalExperience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
@@ -25,16 +26,14 @@ const DEFAULT_SECTION_ENTRY = {
   books: { cover: '', title: '', author: '' },
   hobbies: { icon: 'Gem', title: '', description: '', showIcon: true, showTitle: true, showDescription: true, alignment: 'left' },
   industrialExpertise: { skill: '', level: 0, showSlider: false, sliderStyle: 'gradient', alignment: 'left' },
-  keyAchievements: { title: '', description: '', icon: '💎', uppercase: false, showIcon: true, showDescription: true },
   languages: { language: '', level: 'Advanced', rating: 3 },
-  passions: 'Enter passions here',
+  passions: [''],
   professionalStrengths: { title: '', description: '', icon: 'Gem', uppercase: false, showIcon: true, showDescription: true },
   references: { name: '', title: '', contact: '' },
   myTime: { label: 'New Activity', value: 100, alignment: 'left' },
   volunteering: { title: '', organization: '', location: '', dates: '', description: '', bullets: [''] },
 };
 
-// Debounce utility function to delay execution
 const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {
@@ -48,11 +47,10 @@ const debounce = (func, delay) => {
 const Editor = () => {
   const { authToken, logout } = useContext(AuthContext);
   const { resumeId } = useParams();
-  const desiredId = resumeId && parseInt(resumeId, 10);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // State for instant UI updates (typing)
   const [liveResume, setLiveResume] = useState(null);
-  // State for heavy operations like pagination, updated after a delay
   const [debouncedResume, setDebouncedResume] = useState(null);
 
   const [showSettings, setShowSettings] = useState(false);
@@ -60,65 +58,69 @@ const Editor = () => {
   const [showLayoutManager, setShowLayoutManager] = useState(false);
   const resumeContentRef = useRef(null);
 
-  const fetchResumes = async () => {
-    if (!authToken) return;
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
-        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      const enriched = data.map((resume) => JSON.parse(JSON.stringify(resume)));
-      enriched.sort((a, b) => new Date(b.created) - new Date(a.created));
-
-      let foundResume = desiredId ? enriched.find((r) => r.id === desiredId) : enriched[0];
-      
-      if (foundResume) {
-        setLiveResume(foundResume);
-        setDebouncedResume(foundResume); // Initialize both states
-      }
-    } catch (err) {
-      console.error('Error fetching resumes:', err);
-    }
-  };
-
   useEffect(() => {
-    if (authToken) {
-      fetchResumes();
+    const isGuest = resumeId?.startsWith('guest-');
+
+    if (isGuest) {
+      const guestResumeData = localStorage.getItem(resumeId);
+      if (guestResumeData) {
+        const parsedData = JSON.parse(guestResumeData);
+        setLiveResume(parsedData);
+        setDebouncedResume(parsedData);
+      }
+    } else if (authToken) {
+      const fetchResume = async () => {
+        try {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
+            headers: { 'Authorization': `Bearer ${authToken}` },
+          });
+          if (res.ok) {
+            const foundResume = await res.json();
+            setLiveResume(foundResume);
+            setDebouncedResume(foundResume);
+          } else {
+             navigate('/select-template');
+          }
+        } catch (err) {
+          console.error('Error fetching resume:', err);
+        }
+      };
+      fetchResume();
+    } else if (!authToken && !isGuest) {
+        navigate('/login', { state: { from: location.pathname } });
     }
-  }, [authToken, desiredId]);
+  }, [authToken, resumeId, navigate, location.pathname]);
   
   const saveResume = useCallback(async (resumeToSave) => {
     if (!resumeToSave) return;
-    try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeToSave.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ data: resumeToSave.data }),
-      });
-    } catch (err) {
-      console.error('Error saving resume:', err);
+
+    const isGuest = typeof resumeToSave.id === 'string' && resumeToSave.id.startsWith('guest-');
+
+    if (isGuest) {
+      localStorage.setItem(resumeToSave.id, JSON.stringify(resumeToSave));
+    } else if (authToken) {
+      try {
+        await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeToSave.id}/`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ data: resumeToSave.data }),
+        });
+      } catch (err) {
+        console.error('Error saving resume:', err);
+      }
     }
   }, [authToken]);
   
-  // Create a debounced function that updates the paginated view and saves the resume
-  const updateDebouncedStateAndSave = useMemo(
-    () => debounce((newResume) => {
-      setDebouncedResume(newResume);
-      saveResume(newResume);
-    }, 500), // 500ms delay after user stops typing
-    [saveResume]
-  );
+  const updateDebouncedStateAndSave = useMemo(() => debounce((newResume) => {
+    setDebouncedResume(newResume);
+    saveResume(newResume);
+  }, 500), [saveResume]);
   
   const updateField = useCallback((key, value) => {
     setLiveResume(currentResume => {
       if (!currentResume) return null;
-      const newResume = {
-        ...currentResume,
-        data: { ...currentResume.data, [key]: value }
-      };
-      // Update the debounced state and save after a delay
+      const newResume = { ...currentResume, data: { ...currentResume.data, [key]: value } };
       updateDebouncedStateAndSave(newResume);
-      // Return the new state immediately for responsive input fields
       return newResume;
     });
   }, [updateDebouncedStateAndSave]);
@@ -126,40 +128,69 @@ const Editor = () => {
   const updateDesign = useCallback((newDesign) => {
     setLiveResume(currentResume => {
         if (!currentResume) return null;
-        const newResume = {
-            ...currentResume,
-            data: { ...currentResume.data, design: { ...(currentResume.data.design || {}), ...newDesign } }
-        };
+        const newResume = { ...currentResume, data: { ...currentResume.data, design: { ...(currentResume.data.design || {}), ...newDesign } } };
         updateDebouncedStateAndSave(newResume);
         return newResume;
     });
   }, [updateDebouncedStateAndSave]);
 
-  // The updated function to post-process the PDF and remove blank pages
-// In Editor.js
+  // --- 1. ADD THIS FUNCTION TO HANDLE THE IMAGE UPLOAD ---
+  const uploadProfileImage = async (file) => {
+    if (!file || !authToken || resumeId.startsWith('guest-')) {
+      if (resumeId.startsWith('guest-')) {
+        alert('Please sign up or log in to save an image.');
+      }
+      return;
+    }
 
-const handleDownloadPdf = async () => {
-  const element = resumeContentRef.current;
-  if (!element) return;
+    const formData = new FormData();
+    formData.append('profile_image', file);
 
-  // Add a class to the body to prepare for PDF generation
-  document.body.classList.add('pdf-generating');
-
-  // Introduce a short delay to allow the browser to fully render the page
-  setTimeout(() => {
     try {
-      const clone = element.cloneNode(true);
-      const canvases = element.querySelectorAll('canvas');
-      const clonedCanvases = clone.querySelectorAll('canvas');
-      canvases.forEach((canvas, index) => {
-        const dataUrl = canvas.toDataURL('image/png');
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.style.width = canvas.style.width;
-        img.style.height = canvas.style.height;
-        clonedCanvases[index]?.parentNode?.replaceChild(img, clonedCanvases[index]);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          // No 'Content-Type' header is needed; the browser sets it automatically for FormData
+        },
+        body: formData,
       });
 
+      if (res.ok) {
+        const updatedResumeFromServer = await res.json();
+        const newImageUrl = updatedResumeFromServer.profile_image;
+
+        // Update the live state immediately to show the new image
+        setLiveResume(currentResume => {
+          const newResumeState = {
+            ...currentResume,
+            data: {
+              ...currentResume.data,
+              header: {
+                ...currentResume.data.header,
+                profileImage: newImageUrl,
+              }
+            }
+          };
+          // Trigger the debounced save to persist the new image URL in the main data object
+          updateDebouncedStateAndSave(newResumeState);
+          return newResumeState;
+        });
+
+      } else {
+        alert('Image upload failed. The file may be too large or not a valid image.');
+      }
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      alert('A network error occurred during the image upload.');
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    const element = resumeContentRef.current;
+    if (!element) return;
+    document.body.classList.add('pdf-generating');
+    setTimeout(() => {
       const opt = {
         margin: 0,
         filename: 'my_resume.pdf',
@@ -168,31 +199,26 @@ const handleDownloadPdf = async () => {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'legacy'], after: '.resume-page' }
       };
-
-      html2pdf().from(clone).set(opt).toPdf().get('pdf').then(pdf => {
-        // 1. Get the total number of pages
-        const totalPages = pdf.internal.getNumberOfPages();
-
-        // 2. Unconditionally delete the last page if there is more than one
-        if (totalPages > 1) {
-            pdf.deletePage(totalPages);
+      html2pdf().from(element).set(opt).toPdf().get('pdf').then(pdf => {
+        if (pdf.internal.getNumberOfPages() > 1) {
+            pdf.deletePage(pdf.internal.getNumberOfPages());
         }
-
-        // 3. Save the modified PDF
-        pdf.save('my_resume.pdf');
-
+        pdf.save();
       }).catch(err => {
         console.error("PDF generation failed:", err);
       }).finally(() => {
         document.body.classList.remove('pdf-generating');
       });
-
-    } catch (error) {
-      console.error("Failed to generate PDF:", error);
-      document.body.classList.remove('pdf-generating');
+    }, 800);
+  };
+  
+  const handleDownloadClick = () => {
+    if (authToken) {
+      handleDownloadPdf(); 
+    } else {
+      navigate('/login', { state: { from: location.pathname } });
     }
-  }, 800); // A 200-millisecond delay
-};
+  };
   
   const handleVisibilityChange = (newVisibleSections) => {
     setLiveResume(currentResume => {
@@ -201,17 +227,15 @@ const handleDownloadPdf = async () => {
       const newResumeData = { ...currentResume.data, visibleSections: newVisibleSections };
       const oldVisibleSections = currentResume.data.visibleSections || {};
 
-      // Check for newly enabled sections that have empty array data
       Object.keys(newVisibleSections).forEach(key => {
         const wasVisible = oldVisibleSections[key];
         const isNowVisible = newVisibleSections[key];
         const sectionData = newResumeData[key];
 
-        // If section is newly toggled ON and its data is an empty array...
         if (isNowVisible && !wasVisible && Array.isArray(sectionData) && sectionData.length === 0) {
           const defaultEntry = DEFAULT_SECTION_ENTRY[key];
           if (defaultEntry) {
-            newResumeData[key] = [defaultEntry]; // ...preload it with one blank entry.
+            newResumeData[key] = Array.isArray(defaultEntry) ? defaultEntry : [defaultEntry];
           }
         }
       });
@@ -223,16 +247,17 @@ const handleDownloadPdf = async () => {
     });
   };
   
-  // Props for the templates now use the appropriate state
-  const templateProps = {
-    // Paginated view uses the DEBOUNCED data to prevent re-calculating on every keystroke
+  const changeSummaryAlignment = useCallback((alignment) => {
+    updateDesign({ summaryAlign: alignment });
+  }, [updateDesign]);
+  
+  const templateProps = useMemo(() => ({
     resumeData: liveResume ? liveResume.data : {},
-    // UI elements use the LIVE data for instant feedback
     visibleSections: liveResume?.data?.visibleSections || {},
     handleEdit: updateField,
     design: liveResume?.data?.design || {},
-    changeSummaryAlignment: (alignment) => updateDesign({ summaryAlign: alignment }),
-  };
+    changeSummaryAlignment: changeSummaryAlignment,
+  }), [liveResume, updateField, changeSummaryAlignment]);
 
   const getReorderableLayout = () => {
     const layout = liveResume?.data?.layout || { left: [], right: [] };
@@ -251,6 +276,7 @@ const handleDownloadPdf = async () => {
           visibleSections={liveResume?.data?.visibleSections}
           onChange={handleVisibilityChange}
           onClose={() => setShowSections(false)}
+          templateName={liveResume?.template}
         />
       )}
       {showSettings && (
@@ -269,31 +295,44 @@ const handleDownloadPdf = async () => {
       )}
       <div className="flex-1 overflow-auto min-h-0">
         <div className="flex justify-between items-center p-4 shadow bg-white sticky top-0 z-10">
-          <h2 className="text-xl font-semibold">Resume Editor</h2>
+          <div className="flex items-center gap-4">
+            <Link to="/select-template" className="text-gray-600 hover:text-black">
+              <ArrowLeft size={24} />
+            </Link>
+            <h2 className="text-xl font-semibold">Resume Editor</h2>
+          </div>
           <div className="flex gap-2">
             <button onClick={() => setShowLayoutManager(true)} className="px-3 py-1 bg-purple-600 text-white rounded">Layout</button>
             <button onClick={() => setShowSettings(true)} className="px-3 py-1 bg-gray-700 text-white rounded">Design</button>
             <button onClick={() => setShowSections(true)} className="px-3 py-1 bg-indigo-600 text-white rounded">Sections</button>
-            <button onClick={handleDownloadPdf} className="px-3 py-1 bg-green-600 text-white rounded">Download as PDF</button>
+            <button onClick={handleDownloadClick} className="px-3 py-1 bg-green-600 text-white rounded">
+              Download as PDF
+            </button>
+            {authToken ? (
               <PDFDownloadLink
                 document={<MyResumePDF resumeData={liveResume?.data} />}
                 fileName="resume.pdf"
-                className="px-3 py-1 bg-green-600 text-white rounded"
+                className="px-3 py-1 bg-blue-600 text-white rounded"
               >
-                {({ blob, url, loading, error }) =>
-                  loading ? 'Loading...' : 'Download PDF'
-                }
+                {({ loading }) => (loading ? 'Loading...' : 'Download (Advanced)')}
               </PDFDownloadLink>
-            <button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>
+            ) : (
+              <button onClick={handleDownloadClick} className="px-3 py-1 bg-blue-600 text-white rounded">
+                Download (Advanced)
+              </button>
+            )}
+            {authToken && (
+              <button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>
+            )}
           </div>
         </div>
-
         {debouncedResume && (
           <div className="paged-editor-container" style={{ padding: '5px 0', margin: '0 auto' }}>
             <div id="resume-canvas" ref={resumeContentRef}>
-               {templateName === 'classic' && <TemplateClassic {...templateProps} />}
-               {templateName === 'ats' && <TemplateATS {...templateProps} />}
-               {(!templateName || templateName === 'modern') && <TemplateModern {...templateProps} />}
+               {/* --- 2. PASS THE FUNCTION AS A PROP TO THE TEMPLATES --- */}
+               {templateName === 'classic' && <TemplateClassic {...templateProps} uploadProfileImage={uploadProfileImage} />}
+               {templateName === 'ats' && <TemplateATS {...templateProps} uploadProfileImage={uploadProfileImage} />}
+               {(!templateName || templateName === 'modern') && <TemplateModern {...templateProps} uploadProfileImage={uploadProfileImage} />}
             </div>
           </div>
         )}

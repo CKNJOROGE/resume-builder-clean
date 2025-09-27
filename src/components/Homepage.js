@@ -2,20 +2,21 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Award, Smartphone, FileText, UserPlus, Layout, Download, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Navbar from './Navbar';
 
 const features = [
   {
-    icon: <Award className="w-12 h-12 text-blue-600 mb-4" />, 
+    icon: <Award className="w-12 h-12 text-blue-600 mb-4" />,
     title: 'Beautiful Templates',
     description: 'Choose from a variety of modern, clean resume layouts that stand out.',
   },
   {
-    icon: <Smartphone className="w-12 h-12 text-blue-600 mb-4" />, 
+    icon: <Smartphone className="w-12 h-12 text-blue-600 mb-4" />,
     title: 'Mobile Friendly',
     description: 'Edit your resume on any device—phone, tablet, or desktop.',
   },
   {
-    icon: <FileText className="w-12 h-12 text-blue-600 mb-4" />, 
+    icon: <FileText className="w-12 h-12 text-blue-600 mb-4" />,
     title: 'Easy Export',
     description: 'Download your resume as PDF or share a live link instantly.',
   },
@@ -23,19 +24,33 @@ const features = [
 
 const steps = [
   {
-    icon: <UserPlus className="w-10 h-10 text-purple-600 mb-2" />, 
+    icon: <UserPlus className="w-10 h-10 text-purple-600 mb-2" />,
     title: 'Sign Up',
     desc: 'Create your free account and get started in seconds.',
   },
   {
-    icon: <Layout className="w-10 h-10 text-purple-600 mb-2" />, 
+    icon: <Layout className="w-10 h-10 text-purple-600 mb-2" />,
     title: 'Select Template',
     desc: 'Choose a design that fits your style and profession.',
   },
   {
-    icon: <Download className="w-10 h-10 text-purple-600 mb-2" />, 
+    icon: <Download className="w-10 h-10 text-purple-600 mb-2" />,
     title: 'Export & Share',
     desc: 'Download as PDF or send a live online link to recruiters.',
+  },
+];
+
+const templates = [
+  {
+    title: 'Modern',
+    description: 'A clean, two-column layout perfect for professionals.',
+    imageSrc: '/images/template-modern.jpg',
+  },
+ 
+  {
+    title: 'ATS-Friendly',
+    description: 'Optimized for passing through applicant tracking systems.',
+    imageSrc: '/images/template-ats.jpg',
   },
 ];
 
@@ -64,9 +79,11 @@ const faqs = [
 export default function Homepage() {
   return (
     <div className="flex flex-col">
+      <Navbar />
+
       {/* Hero */}
       <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+        <div className="max-w-7xl mx-auto px-4 pt-24 pb-16 text-center">
           <motion.h1
             className="text-5xl md:text-6xl font-extrabold mb-4"
             initial={{ opacity: 0, y: -20 }}
@@ -83,25 +100,45 @@ export default function Homepage() {
           >
             Pick from beautiful, easy-to-customize templates and create your resume in minutes.
           </motion.p>
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center">
             <Link
-              to="/signup"
+              to="/select-template"
               className="px-8 py-4 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
             >
               Get Started
             </Link>
-            <Link
-              to="/login"
-              className="px-8 py-4 border-2 border-white rounded-lg text-white font-semibold hover:bg-white hover:text-blue-600 transition"
-            >
-              Log In
-            </Link>
+            
           </div>
         </div>
       </header>
 
-      {/* Why Choose Us */}
+      {/* --- SECTION MOVED HERE --- */}
+      {/* Template Showcase Section */}
       <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto text-center mb-12 px-4">
+          <h2 className="text-3xl font-bold mb-4">Explore Our Templates</h2>
+          <p className="text-gray-600">Professionally designed templates to get you started.</p>
+        </div>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+          {templates.map((template, i) => (
+            <motion.div
+              key={i}
+              className="border rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300"
+              whileHover={{ y: -5 }}
+            >
+              <img src={template.imageSrc} alt={`${template.title} template preview`} className="w-full object-cover object-top h-96 border-b" />
+              <div className="p-6">
+                <h3 className="text-xl font-semibold mb-2">{template.title}</h3>
+                <p className="text-gray-600">{template.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      {/* Background color changed to bg-gray-50 to maintain alternating pattern */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">Why Choose Us</h2>
           <p className="text-gray-600">Everything you need to craft a standout resume, all in one place.</p>
@@ -110,7 +147,7 @@ export default function Homepage() {
           {features.map((f, i) => (
             <motion.div
               key={i}
-              className="text-center p-6 border rounded-lg hover:shadow-lg transition"
+              className="text-center p-6 border rounded-lg bg-white hover:shadow-lg transition"
               whileHover={{ scale: 1.03 }}
             >
               {f.icon}
@@ -122,7 +159,7 @@ export default function Homepage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">How It Works</h2>
           <p className="text-gray-600">Just three simple steps to your perfect resume.</p>
@@ -131,7 +168,7 @@ export default function Homepage() {
           {steps.map((s, i) => (
             <motion.div
               key={i}
-              className="bg-white p-6 rounded-lg shadow-lg"
+              className="bg-gray-50 p-6 rounded-lg shadow-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.2 }}
@@ -145,7 +182,7 @@ export default function Homepage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">Plans & Pricing</h2>
           <p className="text-gray-600">Select a plan that fits your needs.</p>
@@ -154,7 +191,7 @@ export default function Homepage() {
           {pricing.map((p, i) => (
             <motion.div
               key={i}
-              className={`p-6 rounded-lg border ${p.popular ? 'border-blue-600 shadow-lg' : 'border-gray-200'}`}
+              className={`p-6 rounded-lg border bg-white ${p.popular ? 'border-blue-600 shadow-lg' : 'border-gray-200'}`}
               whileHover={{ scale: 1.02 }}
             >
               {p.popular && <div className="text-sm text-white bg-blue-600 inline-block px-2 py-1 rounded-full mb-2">Most Popular</div>}
@@ -175,7 +212,7 @@ export default function Homepage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
         </div>
@@ -203,10 +240,10 @@ export default function Homepage() {
         <h2 className="text-3xl font-bold mb-4">Ready to Land Your Dream Job?</h2>
         <p className="mb-8">Start crafting your standout resume today.</p>
         <Link
-          to="/signup"
+          to="/select-template"
           className="px-8 py-4 bg-white text-purple-600 rounded-lg font-semibold hover:bg-gray-100 transition"
         >
-          Get Started for Free
+          Get Started
         </Link>
       </section>
 

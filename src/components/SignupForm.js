@@ -5,7 +5,7 @@ import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const SignupForm = ({ onSuccess, onSwitch }) => {
   const navigate = useNavigate();
-  const { signup } = useContext(AuthContext);
+  const { signup, login } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,17 +17,26 @@ const SignupForm = ({ onSuccess, onSwitch }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const success = await signup(username, email, password);
-    setLoading(false);
-    if (success) {
-      // Now, also log the user in to get a token before redirecting
-      // This assumes your `login` function is accessible or you have another way
-      // For simplicity, we'll navigate directly. You might need to log in first.
-      navigate('/select-template'); 
+    const signupSuccess = await signup(username, email, password);
+    
+    if (signupSuccess) {
+      // --- NEW: Automatically log the user in after signing up ---
+      const loginResult = await login(email, password);
+      if (loginResult.success) {
+        // If a guest resume was saved, redirect to its new editor URL
+        if (loginResult.resumeId) {
+          navigate(`/editor/${loginResult.resumeId}`);
+        } else {
+          // Otherwise, go to the default template selection page
+          navigate('/select-template');
+        }
+      }
     } else {
-      setError('Signup failed. Please try again.');
+      setError('Signup failed. A user with this email may already exist.');
     }
+    setLoading(false);
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-green-600 px-4">

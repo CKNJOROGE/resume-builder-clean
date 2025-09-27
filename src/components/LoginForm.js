@@ -16,13 +16,20 @@ const LoginForm = ({ onSuccess, onSwitch }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const success = await login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (success) {
-      navigate('/select-template');
+    
+    if (result.success) {
+      // If a guest resume was saved, redirect to its new editor URL
+      if (result.resumeId) {
+        navigate(`/editor/${result.resumeId}`);
+      } else {
+        // Otherwise, go to the default template selection page
+        navigate('/select-template');
+      }
     } else {
       setError('Invalid email or password');
-    };
+    }
   };
 
   return (

@@ -27,6 +27,7 @@ export default function HobbiesSection({
   onChangeAlignment,
   design = {},
 }) {
+  const { disableIcons = false } = design;
   const sliderPx = parseFloat(design.fontSize) || 0;
   const offset = sliderPx / 30;
   const [focusIdx, setFocusIdx] = useState(null);
@@ -237,7 +238,7 @@ export default function HobbiesSection({
 
             {/* START: Code changes are here */}
             <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.1rem' : '0', alignItems: 'flex-start' }}>
-              {currentItemData.showIcon && (() => {
+              {currentItemData.showIcon && !disableIcons && (() => {
                 const IconComponent = ICON_MAP[currentItemData.icon];
                 return IconComponent ? (
                   // 2. Wrap the icon in the pdf-icon-wrapper div

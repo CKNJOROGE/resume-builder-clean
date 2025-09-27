@@ -1,4 +1,3 @@
-// src/components/SelectTemplate.js
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
@@ -7,15 +6,39 @@ import '../index.css';
 
 const DEFAULT_TEMPLATE_CONFIGS = {
   ats: {
-    // ... (ats config remains the same)
+    design: {
+      font: 'Times New Roman',
+      fontSize: 3,
+      lineHeight: 1.5,
+      margin: 1.5,
+      spacing: 1.2,
+      titleColor: '#000000',
+      subtitleColor: '#333333',
+      summaryAlign: 'left'
+    },
+    visibleSections: {
+      header: true, summary: true, experience: true, education: true, skills: true,
+      projects: true, courses: false, achievements: false, languages: false, references: false,
+      passions: false, hobbies: false, myTime: false, additionalExperience: false,
+      awards: false, books: false, industrialExpertise: false,
+      professionalStrengths: false, volunteering: false,
+    },
+    layout: {
+      left: [
+        'summary', 'skills', 'experience', 'projects', 'education', 'courses',
+        'achievements', 'volunteering', 'additionalExperience', 'references',
+        'awards', 'passions', 'hobbies', 'industrialExpertise', 'professionalStrengths',
+      ],
+      right: [] 
+    }
   },
   modern: {
     design: {
       font: 'Rubik',
-      fontSize: 6, // px
+      fontSize: 6,
       lineHeight: 1.6,
-      margin: 1, // cm
-      spacing: 1.5, // rem
+      margin: 1,
+      spacing: 1.5,
       titleColor: '#002b7f',
       subtitleColor: '#56acf2',
       summaryAlign: 'left'
@@ -24,40 +47,42 @@ const DEFAULT_TEMPLATE_CONFIGS = {
       header: true, summary: true, experience: false, education: false, skills: false,
       projects: false, courses: false, achievements: false, languages: false, references: false,
       passions: false, hobbies: false, myTime: false, additionalExperience: false,
-      awards: false, books: false, industrialExpertise: false, keyAchievements: false,
+      awards: false, books: false, industrialExpertise: false,
       professionalStrengths: false, volunteering: false,
     },
-    // --- NOTE: 'header' has been removed from the default layout ---
     layout: {
-      // Main content sections
       left: [
-        'summary', 
-        'experience', 
-        'achievements',
-        'projects', 
-        'courses', 
-        'keyAchievements',
-        'additionalExperience',
-        'volunteering'
+        'summary', 'experience', 'achievements', 'projects', 'courses', 
+        'additionalExperience', 'volunteering'
       ],
-      // Secondary, smaller sections
       right: [
-        'education',
-        'skills', 
-        'languages', 
-        'awards',
-        'industrialExpertise',
-        'professionalStrengths',
-        'books',
-        'passions',
-        'hobbies',
-        'myTime',
-        'references'
+        'education', 'skills', 'languages', 'awards', 'industrialExpertise',
+        'professionalStrengths', 'books', 'passions', 'hobbies', 'myTime', 'references'
       ]
     }
   },
   classic: {
-    // ... (classic config remains the same)
+    design: {
+      font: 'Georgia',
+      fontSize: 3.5,
+      lineHeight: 1.5,
+      margin: 2,
+      spacing: 1.2,
+      titleColor: '#1f2937',
+      subtitleColor: '#4b5563',
+      summaryAlign: 'left'
+    },
+    visibleSections: {
+      header: true, summary: true, experience: true, education: true, skills: true,
+      projects: false, courses: false, achievements: false, languages: false, references: false,
+      passions: false, hobbies: false, myTime: false, additionalExperience: false,
+      awards: false, books: false, industrialExpertise: false,
+      professionalStrengths: false, volunteering: false,
+    },
+    layout: {
+      left: ['summary', 'experience', 'education', 'skills', 'projects'],
+      right: []
+    }
   }
 };
 
@@ -76,10 +101,8 @@ const SelectTemplate = () => {
   useEffect(() => {
     if (authToken) {
       fetchResumes();
-    } else {
-      navigate('/login', { replace: true });
     }
-  }, [authToken, navigate]);
+  }, [authToken]);
 
   const fetchResumes = async () => {
     try {
@@ -101,20 +124,19 @@ const SelectTemplate = () => {
   };
 
   const createResume = async (templateName) => {
-    if (!authToken) { alert('Please log in.'); return; }
+    if (isCreating) return;
     setIsCreating(true);
 
     const defaultTemplateConfig = DEFAULT_TEMPLATE_CONFIGS[templateName.toLowerCase()];
-
     if (!defaultTemplateConfig) {
       alert(`Error: No default configuration found for template type "${templateName}".`);
       setIsCreating(false);
       return;
     }
 
-    const clonedAndFlattenedData = JSON.parse(JSON.stringify({
+    const resumeData = {
       header: {},
-      summary: '',
+      summary: [''],
       experience: [],
       education: [],
       skills: [],
@@ -123,12 +145,11 @@ const SelectTemplate = () => {
       achievements: [],
       languages: [],
       references: [],
-      passions: [],
+      passions: [''],
       hobbies: [],
       myTime: [],
       industrialExpertise: [],
       awards: [],
-      keyAchievements: [],
       professionalStrengths: [],
       books: [],
       volunteering: [],
@@ -136,32 +157,44 @@ const SelectTemplate = () => {
       design: defaultTemplateConfig.design,
       visibleSections: defaultTemplateConfig.visibleSections,
       layout: defaultTemplateConfig.layout,
-    }));
+    };
 
-
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          template: templateName,
-          title: 'Untitled Resume',
-          data: clonedAndFlattenedData
-        })
-      });
-      if (res.ok) {
-        const created = await res.json();
-        await fetchResumes();
-        navigate(`/editor/${created.id}`);
-      } else {
-        alert(`Error (${res.status}): ${await res.text()}`);
+    if (authToken) {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            template: templateName,
+            title: 'Untitled Resume',
+            data: resumeData
+          })
+        });
+        if (res.ok) {
+          const created = await res.json();
+          navigate(`/editor/${created.id}`);
+        } else {
+          alert(`Error (${res.status}): ${await res.text()}`);
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      } finally {
+        setIsCreating(false);
       }
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    } finally {
+    } else {
+      const guestId = `guest-resume-${Date.now()}`;
+      const guestResumeObject = {
+        id: guestId,
+        template: templateName,
+        title: 'Untitled Guest Resume',
+        data: resumeData,
+      };
+      localStorage.setItem(guestId, JSON.stringify(guestResumeObject));
+      localStorage.setItem('pendingGuestResumeId', guestId);
+      navigate(`/editor/${guestId}`);
       setIsCreating(false);
     }
   };
@@ -182,7 +215,6 @@ const SelectTemplate = () => {
 
   const duplicateResume = async (resume) => {
     const duplicatedData = JSON.parse(JSON.stringify(resume.data || {}));
-
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         method: 'POST',
@@ -207,17 +239,6 @@ const SelectTemplate = () => {
     logout();
     navigate('/login', { replace: true });
   };
-
-  if (!authToken) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-500 flex items-center justify-center">
-        <div className="text-center p-8 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl shadow-lg">
-          <h1 className="text-3xl font-extrabold mb-4 text-gray-100">Please log in</h1>
-          <p className="text-gray-200">You need an account to create and manage resumes.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 overflow-hidden">
@@ -244,7 +265,6 @@ const SelectTemplate = () => {
           Logout
         </button>
       </header>
-
       <div className="relative z-10 container mx-auto px-4 pb-12">
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {templates.map(tpl => (
@@ -265,55 +285,58 @@ const SelectTemplate = () => {
           ))}
         </section>
 
-        <hr className="border-white/40 mb-12" />
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Your Resumes</h2>
-          {resumes.length === 0 ? (
-            <p className="text-gray-200">No resumes yet. Pick a template above to get started.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {resumes.map((resume, idx) => (
-                <div
-                  key={resume.id}
-                  className="bg-black/40 backdrop-blur-xl border border-gray-200/40 rounded-2xl shadow-lg p-6 flex flex-col"
-                >
-                  <div className="text-sm text-white/80 mb-2">RESUME #{idx + 1}</div>
-                  <h3 className="text-xl font-semibold mb-1 text-white">{resume.title}</h3>
-                  <div className="text-xs text-white/80 mb-2">
-                    Last modified: {new Date(resume.updated).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-white/80 mb-4">Template: {resume.template}</div>
-                  <div className="mt-auto flex flex-wrap gap-2">
-                    <button
-                      onClick={() => navigate(`/editor/${resume.id}`)}
-                      className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
+        {authToken && (
+          <>
+            <hr className="border-white/40 mb-12" />
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-gray-100">Your Resumes</h2>
+              {resumes.length === 0 ? (
+                <p className="text-gray-200">No resumes yet. Pick a template above to get started.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {resumes.map((resume, idx) => (
+                    <div
+                      key={resume.id}
+                      className="bg-black/40 backdrop-blur-xl border border-gray-200/40 rounded-2xl shadow-lg p-6 flex flex-col"
                     >
-                      <FiEdit2 className="mr-1" /> Edit
-                    </button>
-                    <button
-                      onClick={() => duplicateResume(resume)}
-                      className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
-                    >
-                      <FiCopy className="mr-1" /> Duplicate
-                    </button>
-                    <button
-                    className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
-                    >
-                      <FiDownload className="mr-1" /> Download
-                    </button>
-                    <button
-                      onClick={() => deleteResume(resume.id)}
-                      className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
-                    >
-                      <FiTrash2 className="mr-1" /> Delete
-                    </button>
-                  </div>
+                      <div className="text-sm text-white/80 mb-2">RESUME #{idx + 1}</div>
+                      <h3 className="text-xl font-semibold mb-1 text-white">{resume.title}</h3>
+                      <div className="text-xs text-white/80 mb-2">
+                        Last modified: {new Date(resume.updated).toLocaleString()}
+                      </div>
+                      <div className="text-sm text-white/80 mb-4">Template: {resume.template}</div>
+                      <div className="mt-auto flex flex-wrap gap-2">
+                        <button
+                          onClick={() => navigate(`/editor/${resume.id}`)}
+                          className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
+                        >
+                          <FiEdit2 className="mr-1" /> Edit
+                        </button>
+                        <button
+                          onClick={() => duplicateResume(resume)}
+                          className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
+                        >
+                          <FiCopy className="mr-1" /> Duplicate
+                        </button>
+                        <button
+                        className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
+                        >
+                          <FiDownload className="mr-1" /> Download
+                        </button>
+                        <button
+                          onClick={() => deleteResume(resume.id)}
+                          className="flex items-center text-white hover:text-gray-200 text-sm font-medium"
+                        >
+                          <FiTrash2 className="mr-1" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );

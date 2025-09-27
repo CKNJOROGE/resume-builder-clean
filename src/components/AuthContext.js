@@ -25,8 +25,7 @@ export const AuthProvider = ({ children }) => {
 
       if (res.ok) {
         const data = await res.json();
-        console.log('Login successful:', data);
-
+        
         setAuthToken(data.access);
         setUser(email);
         setPremium(data.premium);
@@ -35,14 +34,47 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(email));
         localStorage.setItem('premium', data.premium.toString());
 
-        return true;
+        // --- NEW: Check for and save a pending guest resume ---
+        const pendingGuestResumeId = localStorage.getItem('pendingGuestResumeId');
+        if (pendingGuestResumeId) {
+          const guestResumeJSON = localStorage.getItem(pendingGuestResumeId);
+          if (guestResumeJSON) {
+            const guestResume = JSON.parse(guestResumeJSON);
+            
+            // Save the guest resume to the server under the new user's account
+            const saveRes = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${data.access}`, // Use the new token
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                template: guestResume.template,
+                title: guestResume.title.replace('Guest ', ''), // Clean up the title
+                data: guestResume.data,
+              }),
+            });
+
+            if (saveRes.ok) {
+              const savedResume = await saveRes.json();
+              // Clean up localStorage
+              localStorage.removeItem(pendingGuestResumeId);
+              localStorage.removeItem('pendingGuestResumeId');
+              // Return success and the new, permanent resume ID
+              return { success: true, resumeId: savedResume.id };
+            }
+          }
+        }
+        // End of new logic
+
+        return { success: true, resumeId: null }; // Normal login, no guest resume found
       } else {
         console.error('Login failed:', res.status);
-        return false;
+        return { success: false };
       }
     } catch (err) {
       console.error('Login error:', err);
-      return false;
+      return { success: false };
     }
   };
 
@@ -53,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
       });
-
+      // Return true on success to signal that we can now log the user in
       return res.ok;
     } catch (err) {
       console.error('Signup error:', err);

@@ -369,7 +369,7 @@ export default function AdditionalExperienceSection({
             onClick={isFocused ? undefined : () => handleFocus(idx)}
             style={{
               position: 'relative',
-              padding:    isFocused ? '0.5rem' : '0.25rem 0.5rem',
+              padding:    isFocused ? '0.25rem' : '0.25rem 0.25rem',
               backgroundColor: isFocused ? '#f9fafb' : 'transparent',
               borderRadius: '.375rem',
               border: isFocused ? '1px solid #e5e7eb' : 'none',
@@ -437,7 +437,7 @@ export default function AdditionalExperienceSection({
                   </div>
                 )
               )}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.25rem' }}>
                 {settings.company && (
                   isFocused ? (
                     <textarea id={`company-${idx}`} rows={1} value={item.company} onChange={e => handleFieldChange(idx, 'company', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Company Name" style={{ flex: '1 1 auto', minWidth: '120px', fontSize: `${(0.675 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding: '0.2rem', background: '#fff', outline: 'none', textAlign: align, resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box' }} ref={el => (inputRefs.current[`company-${idx}`] = el)} onClick={e => e.stopPropagation()} />

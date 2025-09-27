@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { Sparkles } from 'lucide-react'; // Import the icon
 
 const deepCompare = (obj1, obj2) => {
   if (obj1 === obj2) return true;
@@ -31,7 +32,7 @@ const SETTINGS_OPTIONS = [
 export default function VolunteeringSection({
   data = [],
   onEdit,
-  itemsToRender, // Added itemsToRender prop
+  itemsToRender,
   sectionStyle = {},
   headingStyle = {},
   design = {},
@@ -43,18 +44,23 @@ export default function VolunteeringSection({
   const [showSettingsOptions, setShowSettingsOptions] = useState(false);
   const [settingsByIndex, setSettingsByIndex] = useState({});
   const [alignByIndex, setAlignByIndex] = useState({});
-  const inputRefs = useRef({});
-  const alignRef = useRef(null);
-  const settingsRef = useRef(null);
-  const blurTimeout = useRef(null);
   const [localStartDate, setLocalStartDate] = useState(null);
   const [localEndDate, setLocalEndDate] = useState(null);
   const [localIsPresent, setLocalIsPresent] = useState(false);
 
-  const defaultSettings = SETTINGS_OPTIONS.reduce(
-    (acc, { key }) => ({ ...acc, [key]: true }),
-    {}
-  );
+  // --- STATE FOR THE AI FEATURE ---
+  const [selectedText, setSelectedText] = useState('');
+  const [popupPosition, setPopupPosition] = useState(null);
+  const [suggestion, setSuggestion] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null, field: null, bulletIndex: null });
+
+  const inputRefs = useRef({});
+  const alignRef = useRef(null);
+  const settingsRef = useRef(null);
+  const blurTimeout = useRef(null);
+
+  const defaultSettings = SETTINGS_OPTIONS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {});
   const defaultAlignment = 'left';
 
   useEffect(() => {
@@ -65,13 +71,13 @@ export default function VolunteeringSection({
       newAlignMap[i] = item.alignment || defaultAlignment;
     });
 
-    if (JSON.stringify(newSettingsMap) !== JSON.stringify(settingsByIndex)) {
+    if (!deepCompare(settingsByIndex, newSettingsMap)) {
       setSettingsByIndex(newSettingsMap);
     }
-    if (JSON.stringify(newAlignMap) !== JSON.stringify(alignByIndex)) {
+    if (!deepCompare(alignByIndex, newAlignMap)) {
       setAlignByIndex(newAlignMap);
     }
-  }, [data]);
+  }, [data, defaultSettings, defaultAlignment, settingsByIndex, alignByIndex]);
 
   useEffect(() => {
     if (focusIdx !== null) {
@@ -118,10 +124,7 @@ export default function VolunteeringSection({
       if (focusIdx !== null) {
         const entryDiv = document.querySelector(`[data-entry-idx="${focusIdx}"]`);
         const clickedOnToolbar = e.target.closest('[data-toolbar="true"]');
-        if (
-          entryDiv && !entryDiv.contains(e.target) &&
-          !clickedOnToolbar
-        ) {
+        if (entryDiv && !entryDiv.contains(e.target) && !clickedOnToolbar) {
           setFocusIdx(null);
         }
       }
@@ -130,8 +133,62 @@ export default function VolunteeringSection({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAlignOptions, showSettingsOptions, focusIdx]);
 
-  const updateData = updated => onEdit(updated);
+  // --- HELPER FUNCTIONS FOR THE AI FEATURE ---
+  const handleTextSelect = (e, entryIndex, field, bulletIndex = null) => {
+    const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
+    if (text.trim().length > 5) {
+      const rect = e.target.getBoundingClientRect();
+      setPopupPosition({
+        top: rect.top + window.scrollY - 35,
+        left: rect.left + window.scrollX,
+      });
+      setSelectedText(text);
+      setActiveTextarea({ entryIndex, field, bulletIndex });
+    } else {
+      setPopupPosition(null);
+    }
+  };
 
+  const handleRephraseClick = async () => {
+    if (!selectedText) return;
+    setIsLoadingAI(true);
+    setSuggestion('');
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rephrase/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: selectedText }),
+      });
+      const data = await response.json();
+      if (data.suggestion) {
+        setSuggestion(data.suggestion);
+      }
+    } catch (error) {
+      console.error("Error fetching AI suggestion:", error);
+      alert("Could not get AI suggestion. Please try again.");
+    } finally {
+      setIsLoadingAI(false);
+      setPopupPosition(null);
+    }
+  };
+
+  const acceptSuggestion = () => {
+    const { entryIndex, field, bulletIndex } = activeTextarea;
+    const entryData = data[entryIndex];
+    if (field === 'bullets') {
+      const originalText = entryData.bullets[bulletIndex];
+      const updatedText = originalText.replace(selectedText, suggestion);
+      handleBulletChange(entryIndex, bulletIndex, updatedText);
+    } else {
+      const originalText = entryData[field];
+      const updatedText = originalText.replace(selectedText, suggestion);
+      handleFieldChange(entryIndex, field, updatedText);
+    }
+    setSuggestion('');
+  };
+
+  const updateData = updated => onEdit(updated);
+  
   const handleFieldChange = (idx, key, value) => {
     const updated = [...data];
     updated[idx] = { ...updated[idx], [key]: value };
@@ -143,15 +200,12 @@ export default function VolunteeringSection({
     updated[idx].bullets[bIdx] = value;
     updateData(updated);
   };
-
+  
   const parseDatesForPicker = (dateString) => {
-    let startDateObj = null;
-    let endDateObj = null;
-    let isPresent = false;
-
+    let startDateObj = null, endDateObj = null, isPresent = false;
     if (dateString) {
       const parts = dateString.split(' - ');
-      if (parts.length === 2) {
+      if (parts.length >= 1 && parts[0]) {
         const startParts = parts[0].trim().split('/');
         if (startParts.length === 2) {
             const month = parseInt(startParts[0], 10) - 1;
@@ -161,7 +215,8 @@ export default function VolunteeringSection({
             const year = parseInt(startParts[0], 10);
             if (!isNaN(year)) startDateObj = new Date(year, 0, 1);
         }
-
+      }
+      if (parts.length === 2) {
         if (parts[1].trim().toLowerCase() === 'present') {
           isPresent = true;
           endDateObj = null;
@@ -176,40 +231,15 @@ export default function VolunteeringSection({
               if (!isNaN(year)) endDateObj = new Date(year, 0, 1);
           }
         }
-      } else if (parts.length === 1) {
-        const singleParts = parts[0].trim().split('/');
-        if (singleParts.length === 2) {
-            const month = parseInt(singleParts[0], 10) - 1;
-            const year = parseInt(singleParts[1], 10);
-            if (!isNaN(month) && !isNaN(year)) startDateObj = new Date(year, month, 1);
-        } else if (singleParts.length === 1 && singleParts[0].length === 4) {
-            const year = parseInt(singleParts[0], 10);
-            if (!isNaN(year)) startDateObj = new Date(year, 0, 1);
-        }
       }
     }
     return { startDateObj, endDateObj, isPresent };
   };
 
   const formatDatesForStorage = (startDateObj, endDateObj, isPresent) => {
-    let startDisplay = '';
-    if (startDateObj instanceof Date && !isNaN(startDateObj)) {
-      startDisplay = `${(startDateObj.getMonth() + 1).toString().padStart(2, '0')}/${startDateObj.getFullYear()}`;
-    }
-
-    let endDisplay = '';
-    if (isPresent) {
-      endDisplay = 'Present';
-    } else if (endDateObj instanceof Date && !isNaN(endDateObj)) {
-      endDisplay = `${(endDateObj.getMonth() + 1).toString().padStart(2, '0')}/${endDateObj.getFullYear()}`;
-    }
-
-    if (startDisplay && endDisplay) {
-      return `${startDisplay} - ${endDisplay}`;
-    } else if (startDisplay) {
-      return startDisplay;
-    }
-    return '';
+    let startDisplay = startDateObj instanceof Date && !isNaN(startDateObj) ? `${(startDateObj.getMonth() + 1).toString().padStart(2, '0')}/${startDateObj.getFullYear()}` : '';
+    let endDisplay = isPresent ? 'Present' : (endDateObj instanceof Date && !isNaN(endDateObj) ? `${(endDateObj.getMonth() + 1).toString().padStart(2, '0')}/${endDateObj.getFullYear()}` : '');
+    return startDisplay && endDisplay ? `${startDisplay} - ${endDisplay}` : startDisplay;
   };
 
   const handleDateRangeChange = (dates) => {
@@ -218,8 +248,8 @@ export default function VolunteeringSection({
     setLocalEndDate(end);
     let newIsPresent = localIsPresent;
     if (end !== null) {
-        newIsPresent = false;
-        setLocalIsPresent(false);
+      newIsPresent = false;
+      setLocalIsPresent(false);
     }
     const formattedDateString = formatDatesForStorage(start, end, newIsPresent);
     handleFieldChange(focusIdx, 'dates', formattedDateString);
@@ -231,15 +261,12 @@ export default function VolunteeringSection({
     if (newIsPresent) {
       setLocalEndDate(null);
     }
-    const formattedDateString = formatDatesForStorage(localStartDate, null, newIsPresent);
+    const formattedDateString = formatDatesForStorage(localStartDate, newIsPresent ? null : localEndDate, newIsPresent);
     handleFieldChange(focusIdx, 'dates', formattedDateString);
   };
 
   const addEntry = () => {
-    const updated = [
-      ...data,
-      { title: '', organization: '', location: '', dates: '', description: '', bullets: [''], settings: { ...defaultSettings }, alignment: defaultAlignment },
-    ];
+    const updated = [ ...data, { title: '', organization: '', location: '', dates: '', description: '', bullets: [''], settings: { ...defaultSettings }, alignment: defaultAlignment },];
     updateData(updated);
     setFocusIdx(updated.length - 1);
     setTimeout(() => {
@@ -253,24 +280,28 @@ export default function VolunteeringSection({
     updateData(updated);
     setFocusIdx(null);
   };
-
-  const addBulletAt = (idx, bIdx) => {
+  
+  const addBulletAt = (idx, bIdx, content = '') => {
     const updated = [...data];
-    updated[idx].bullets.splice(bIdx + 1, 0, '');
+    updated[idx].bullets.splice(bIdx + 1, 0, content);
     updateData(updated);
     setTimeout(() => {
-      inputRefs.current[`bullet-${idx}-${bIdx + 1}`]?.focus();
+        const newBulletEl = inputRefs.current[`bullet-${idx}-${bIdx + 1}`];
+        if (newBulletEl) {
+            newBulletEl.focus();
+            newBulletEl.selectionStart = newBulletEl.selectionEnd = 0;
+        }
     }, 0);
   };
 
   const removeBullet = (idx, bIdx) => {
     const updated = [...data];
-    if (updated[idx].bullets.length === 1 && updated[idx].bullets[0].trim() === '') {
-      removeEntry(idx);
-    } else {
+    if (updated[idx].bullets.length > 1) {
       updated[idx].bullets.splice(bIdx, 1);
-      updateData(updated);
+    } else {
+      updated[idx].bullets[0] = '';
     }
+    updateData(updated);
   };
 
   const handleMoveEntryUp = (idx) => {
@@ -307,16 +338,11 @@ export default function VolunteeringSection({
     const curr = settingsByIndex[focusIdx] || defaultSettings;
     const nextSettings = { ...curr, [key]: !curr[key] };
     const updated = data.map((item, idx) =>
-      idx === focusIdx
-        ? { ...item, settings: nextSettings }
-        : item
+      idx === focusIdx ? { ...item, settings: nextSettings } : item
     );
     updateData(updated);
-    setSettingsByIndex(prev => ({
-      ...prev,
-      [focusIdx]: nextSettings
-    }));
-  }
+    setSettingsByIndex(prev => ({ ...prev, [focusIdx]: nextSettings }));
+  };
 
   const handleFocus = (idx) => {
     clearTimeout(blurTimeout.current);
@@ -324,37 +350,57 @@ export default function VolunteeringSection({
   };
 
   const handleBlur = () => {
-    blurTimeout.current = setTimeout(() => setFocusIdx(null), 150);
+    blurTimeout.current = setTimeout(() => {
+      setFocusIdx(null);
+      setPopupPosition(null); // Hide AI button on blur
+    }, 150);
   };
   
-  // FIX: Determine indices to render from itemsToRender (if provided) or data
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
 
   return (
     <div style={{ position: 'relative' }} onMouseDown={e => e.stopPropagation()}>
-      {/* FIX: Removed H2 title and HR */}
+      {/* --- UI FOR THE AI FEATURE --- */}
+      {popupPosition && (
+        <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
+          <button
+            onMouseDown={(e) => {
+              e.stopPropagation(); // Stop event from reaching the parent div
+              handleRephraseClick();
+            }}
+            className="flex items-center gap-1 bg-purple-600 text-white px-2 py-1 rounded-md text-xs shadow-lg hover:bg-purple-700 transition-transform transform hover:scale-105"
+            disabled={isLoadingAI}
+          >
+            <Sparkles size={14} className={isLoadingAI ? "animate-spin" : ""} />
+            {isLoadingAI ? 'Thinking...' : 'Improve'}
+          </button>
+        </div>
+      )}
 
+      {suggestion && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-md animate-fade-in-up">
+            <h3 className="font-bold text-lg mb-2">AI Suggestion</h3>
+            <p className="text-sm text-gray-500 mb-1">Original:</p>
+            <blockquote className="bg-gray-100 p-3 rounded text-sm mb-4 border-l-4 border-gray-300">"{selectedText}"</blockquote>
+            <p className="text-sm text-gray-500 mb-1">Suggestion:</p>
+            <blockquote className="bg-purple-100 p-3 rounded text-sm mb-6 border-l-4 border-purple-400">{suggestion}</blockquote>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setSuggestion('')} className="px-4 py-2 rounded text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+              <button onClick={acceptSuggestion} className="px-4 py-2 rounded bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700">Accept Suggestion</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {!itemsToRender && data.length === 0 && (
-        <button
-          onClick={addEntry}
-          style={{
-            fontSize: '0.875rem',
-            color: '#2563EB',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            marginBottom: '1rem',
-          }}
-        >
+        <button onClick={addEntry} style={{ fontSize: '0.875rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', marginBottom: '1rem' }}>
           ➕ Entry
         </button>
       )}
 
-      {/* FIX: Map over the stable renderIndices array */}
       {renderIndices.map((idx) => {
-        if (idx >= data.length) return null; // Safeguard
-
-        // FIX: Access the item data using the stable index
+        if (idx >= data.length) return null;
         const item = data[idx];
         const isFocused = focusIdx === idx;
         const settings = settingsByIndex[idx] || defaultSettings;
@@ -362,16 +408,13 @@ export default function VolunteeringSection({
 
         return (
           <div
-            key={idx} // FIX: Use stable index for the key
+            key={idx}
             data-entry-idx={idx}
             onClick={isFocused ? undefined : () => handleFocus(idx)}
             style={{
-              position: 'relative',
-              padding: isFocused ? '0.5rem' : '0.25rem 0.5rem',
-              backgroundColor: isFocused ? '#f9fafb' : 'transparent',
-              borderRadius: '.375rem',
-              border: isFocused ? '1px solid #e5e7eb' : 'none',
-              ...sectionStyle,
+              position: 'relative', padding: isFocused ? '0.5rem' : '0.25rem 0.5rem',
+              backgroundColor: isFocused ? '#f9fafb' : 'transparent', borderRadius: '.375rem',
+              border: isFocused ? '1px solid #e5e7eb' : 'none', ...sectionStyle,
             }}
             onMouseDown={e => e.stopPropagation()}
           >
@@ -379,19 +422,10 @@ export default function VolunteeringSection({
               <div
                 data-toolbar="true"
                 style={{
-                  fontSize: '1rem',
-                  position: 'absolute',
-                  top: '-3rem',
-                  right: 0,
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'center',
-                  background: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '.25rem',
-                  padding: '.25rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  zIndex: 10,
+                  fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0,
+                  display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff',
+                  border: '1px solid #ddd', borderRadius: '.25rem', padding: '.25rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 10,
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
@@ -402,9 +436,7 @@ export default function VolunteeringSection({
                   <button onClick={handleAlignClick}>T</button>
                   {showAlignOptions && (
                     <div style={{ position: 'absolute', top: '-4rem', right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 11 }}>
-                      {ALIGNMENTS.map(a => (
-                        <div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer' }} onClick={() => handleSelectAlign(a)}>{a}</div>
-                      ))}
+                      {ALIGNMENTS.map(a => (<div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer' }} onClick={() => handleSelectAlign(a)}>{a}</div>))}
                     </div>
                   )}
                 </div>
@@ -428,7 +460,7 @@ export default function VolunteeringSection({
             <div style={{ breakInside: 'avoid', WebkitColumnBreakInside: 'avoid', pageBreakInside: 'avoid' }}>
               {settings.title && (
                 isFocused ? (
-                  <textarea id={`title-${idx}`} rows={1} value={item.title} onChange={e => handleFieldChange(idx, 'title', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Role / Title" style={{ width: '100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding: '0rem', marginBottom: '0.5rem', background: '#fff', outline: 'none', textAlign: align, resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', color: design.titleColor, }} ref={el => (inputRefs.current[`title-${idx}`] = el)} onClick={e => e.stopPropagation()} />
+                  <textarea id={`title-${idx}`} rows={1} value={item.title} onChange={e => handleFieldChange(idx, 'title', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} onSelect={(e) => handleTextSelect(e, idx, 'title')} placeholder="Role / Title" style={{ width: '100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding: '0rem', marginBottom: '0.5rem', background: '#fff', outline: 'none', textAlign: align, resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', color: design.titleColor, }} ref={el => (inputRefs.current[`title-${idx}`] = el)} onClick={e => e.stopPropagation()} />
                 ) : (
                   <div style={{ width: '100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0rem', minHeight: '1.5rem', color: design.titleColor }} onClick={() => handleFocus(idx)}>
                     {item.title || 'Role / Title'}
@@ -438,7 +470,7 @@ export default function VolunteeringSection({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem', marginBottom: '0.5rem' }}>
                 {settings.organization && (
                   isFocused ? (
-                    <textarea id={`organization-${idx}`} rows={1} value={item.organization} onChange={e => handleFieldChange(idx, 'organization', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Organization Name" style={{ flex: '1 1 auto', minWidth: '120px', fontSize: `${(0.675 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding: '0.2rem', background: '#fff', outline: 'none', textAlign: align, resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box' }} ref={el => (inputRefs.current[`organization-${idx}`] = el)} onClick={e => e.stopPropagation()} />
+                    <textarea id={`organization-${idx}`} rows={1} value={item.organization} onChange={e => handleFieldChange(idx, 'organization', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} onSelect={(e) => handleTextSelect(e, idx, 'organization')} placeholder="Organization Name" style={{ flex: '1 1 auto', minWidth: '120px', fontSize: `${(0.675 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius: '.25rem', padding: '0.2rem', background: '#fff', outline: 'none', textAlign: align, resize: 'none', overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box' }} ref={el => (inputRefs.current[`organization-${idx}`] = el)} onClick={e => e.stopPropagation()} />
                   ) : (
                     <div style={{ flex: '1 1 auto', minWidth: '120px', fontSize: `${(0.675 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.2rem', minHeight: '1.5rem', color: item.organization.trim() === '' ? '#a0a0a0' : 'inherit' }} onClick={() => handleFocus(idx)}>
                       {item.organization || 'Organization Name'}
@@ -473,7 +505,7 @@ export default function VolunteeringSection({
             </div>
             {settings.description && (
               isFocused ? (
-                <textarea id={`description-${idx}`} ref={el => (inputRefs.current[`description-${idx}`] = el)} value={item.description} onChange={e => handleFieldChange(idx, 'description', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Brief organization/role summary..." style={{ width: '100%', border: '1px solid #ccc', borderRadius: '.25rem', padding: '0.2rem', marginBottom: '0.75rem', resize: 'none', overflow: 'hidden', background: '#fff', outline: 'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', color: '#080808' }} onClick={e => e.stopPropagation()} />
+                <textarea id={`description-${idx}`} ref={el => (inputRefs.current[`description-${idx}`] = el)} value={item.description} onChange={e => handleFieldChange(idx, 'description', e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} onSelect={(e) => handleTextSelect(e, idx, 'description')} placeholder="Brief organization/role summary..." style={{ width: '100%', border: '1px solid #ccc', borderRadius: '.25rem', padding: '0.2rem', marginBottom: '0.75rem', resize: 'none', overflow: 'hidden', background: '#fff', outline: 'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', color: '#080808' }} onClick={e => e.stopPropagation()} />
               ) : (
                 <div style={{ width: '100%', marginBottom: '0.75rem', fontSize: `${(0.6 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.2rem', minHeight: '2rem', color: item.description.trim() === '' ? '#a0a0a0' : '#080808' }} onClick={() => handleFocus(idx)}>
                   {item.description || 'Brief organization/role summary...'}
@@ -487,7 +519,7 @@ export default function VolunteeringSection({
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                       <span style={{lineHeight:1}}>&bull;</span>
                       {isFocused ? (
-                        <textarea id={`bullet-${idx}-${bIdx}`} rows={1} ref={el => (inputRefs.current[`bullet-${idx}-${bIdx}`] = el)} value={bullet} onChange={e => handleBulletChange(idx, bIdx, e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const currentBulletText = e.target.value; const cursorPosition = e.target.selectionStart; const textBeforeCursor = currentBulletText.substring(0, cursorPosition); const textAfterCursor = currentBulletText.substring(cursorPosition); handleBulletChange(idx, bIdx, textBeforeCursor); addBulletAt(idx, bIdx, textAfterCursor); } }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} placeholder="Bullet point..." style={{ flex: '1 1 auto', border: 'none', borderBottom: '1px solid #ccc', background: '#fff', outline: 'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, resize: 'none', overflow: 'hidden', textAlign: align, whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', padding: '0.25rem', color: '#080808' }} onClick={e => e.stopPropagation()} />
+                        <textarea id={`bullet-${idx}-${bIdx}`} rows={1} ref={el => (inputRefs.current[`bullet-${idx}-${bIdx}`] = el)} value={bullet} onChange={e => handleBulletChange(idx, bIdx, e.target.value)} onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const currentBulletText = e.target.value; const cursorPosition = e.target.selectionStart; const textBeforeCursor = currentBulletText.substring(0, cursorPosition); const textAfterCursor = currentBulletText.substring(cursorPosition); handleBulletChange(idx, bIdx, textBeforeCursor); addBulletAt(idx, bIdx, textAfterCursor); } }} onFocus={() => handleFocus(idx)} onBlur={handleBlur} onSelect={(e) => handleTextSelect(e, idx, 'bullets', bIdx)} placeholder="Bullet point..." style={{ flex: '1 1 auto', border: 'none', borderBottom: '1px solid #ccc', background: '#fff', outline: 'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, resize: 'none', overflow: 'hidden', textAlign: align, whiteSpace: 'pre-wrap', wordBreak: 'break-word', boxSizing: 'border-box', padding: '0.25rem', color: '#080808' }} onClick={e => e.stopPropagation()} />
                       ) : (
                         <div style={{ flex: '1 1 auto', fontSize: `${(0.6 + offset).toFixed(3)}rem`, textAlign: align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', minHeight: '1.5rem', color: '#080808', padding: '0rem' }} onClick={() => handleFocus(idx)}>
                           {bullet || 'Bullet point...'}
@@ -501,7 +533,7 @@ export default function VolunteeringSection({
                 ))}
                 {isFocused && (
                   <li>
-                    <button onClick={() => addBulletAt(idx, item.bullets.length -1)} style={{ fontSize: '0.875rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', marginTop: '0.5rem', marginLeft: '-0.75rem' }}>➕ Bullet</button>
+                    <button onClick={() => addBulletAt(idx, item.bullets.length - 1)} style={{ fontSize: '0.875rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', marginTop: '0.5rem', marginLeft: '-0.75rem' }}>➕ Bullet</button>
                   </li>
                 )}
               </ul>

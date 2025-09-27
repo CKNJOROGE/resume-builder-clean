@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { Sparkles } from 'lucide-react'; // An icon for our AI button
 
 const deepCompare = (obj1, obj2) => {
   if (obj1 === obj2) return true;
@@ -36,6 +37,7 @@ export default function ExperienceSection({
   headingStyle = {},
   onChangeAlignment,
   design = {},
+  isFirstOnPage = false,
 }) {
   const sliderPx = parseFloat(design.fontSize) || 0;
   const offset = sliderPx / 30;
@@ -47,6 +49,13 @@ export default function ExperienceSection({
   const [localStartDate, setLocalStartDate] = useState(null);
   const [localEndDate, setLocalEndDate] = useState(null);
   const [localIsPresent, setLocalIsPresent] = useState(false);
+
+  // --- NEW: State for the AI Rephrasing Feature ---
+  const [selectedText, setSelectedText] = useState('');
+  const [popupPosition, setPopupPosition] = useState(null);
+  const [suggestion, setSuggestion] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null, field: null, bulletIndex: null });
 
   const refs = useRef({});
   const alignRef = useRef(null);
@@ -66,13 +75,9 @@ export default function ExperienceSection({
       newSettings[i] = item.settings || { ...defaultSettings };
       newAlignments[i] = item.align || defaultAlignment;
     });
-    if (!deepCompare(settingsByIndex, newSettings)) {
-      setSettingsByIndex(newSettings);
-    }
-    if (!deepCompare(alignByIndex, newAlignments)) {
-      setAlignByIndex(newAlignments);
-    }
-  }, [data, defaultSettings, defaultAlignment]);
+    if (!deepCompare(settingsByIndex, newSettings)) setSettingsByIndex(newSettings);
+    if (!deepCompare(alignByIndex, newAlignments)) setAlignByIndex(newAlignments);
+  }, [data, defaultSettings, defaultAlignment, settingsByIndex, alignByIndex]);
 
 
   useEffect(() => {
@@ -131,10 +136,13 @@ export default function ExperienceSection({
     updated[idx] = { ...updated[idx], [key]: val };
     updateData(updated);
   };
+  
   const handleBulletChange = (idx, bIdx, val) => {
     const updated = [...data];
-    updated[idx].bullets[bIdx] = val;
-    updateData(updated);
+    if (updated[idx] && updated[idx].bullets) {
+        updated[idx].bullets[bIdx] = val;
+        updateData(updated);
+    }
   };
 
   const handleFocusWithDelay = (idx) => {
@@ -143,7 +151,10 @@ export default function ExperienceSection({
   };
 
   const handleBlurWithDelay = () => {
-    blurTimeout.current = setTimeout(() => setFocusIdx(null), 150);
+    blurTimeout.current = setTimeout(() => {
+        setFocusIdx(null);
+        setPopupPosition(null); // Hide AI button on blur
+    }, 150);
   };
 
   const parseDatesForPicker = (dateString) => {
@@ -276,12 +287,112 @@ export default function ExperienceSection({
     onEdit(updatedData);
     setSettingsByIndex(prev => ({ ...prev, [focusIdx]: nextSettings }));
   };
+  
+  // --- NEW: AI Feature Handlers ---
+  const handleTextSelect = (e, entryIndex, field, bulletIndex = null) => {
+    const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
+    if (text.trim().length > 5) {
+      const rect = e.target.getBoundingClientRect();
+      setPopupPosition({
+        top: rect.top + window.scrollY - 35,
+        left: rect.left + window.scrollX,
+      });
+      setSelectedText(text);
+      setActiveTextarea({ entryIndex, field, bulletIndex });
+    } else {
+      setPopupPosition(null);
+    }
+  };
 
-  // FIX: Determine indices to render from itemsToRender (if provided) or data
+const handleRephraseClick = async () => {
+  console.log("1. 'Improve' button clicked. The handler started.");
+
+  if (!selectedText) {
+    console.log("2. FAILED: No selected text. Aborting.");
+    return;
+  }
+
+  console.log("3. PASSED: Selected text is:", selectedText);
+  setIsLoadingAI(true);
+  setSuggestion('');
+
+  try {
+    console.log("4. Attempting to fetch from: ${process.env.REACT_APP_API_URL}/api/rephrase/");
+
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rephrase/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: selectedText }),
+    });
+
+    console.log("5. Fetch request completed. Response status:", response.status);
+
+    const data = await response.json();
+    console.log("6. Response JSON parsed:", data);
+
+    if (data.suggestion) {
+      setSuggestion(data.suggestion);
+    }
+  } catch (error) {
+    console.error("7. CATCH BLOCK: An error occurred during fetch.", error);
+  } finally {
+    console.log("8. FINALLY BLOCK: Request finished.");
+    setIsLoadingAI(false);
+    setPopupPosition(null);
+  }
+};
+
+
+  const acceptSuggestion = () => {
+    const { entryIndex, field, bulletIndex } = activeTextarea;
+    const entryData = data[entryIndex];
+
+    if (field === 'bullets') {
+      const originalText = entryData.bullets[bulletIndex];
+      const updatedText = originalText.replace(selectedText, suggestion);
+      handleBulletChange(entryIndex, bulletIndex, updatedText);
+    } else {
+      const originalText = entryData[field];
+      const updatedText = originalText.replace(selectedText, suggestion);
+      handleFieldChange(entryIndex, field, updatedText);
+    }
+    setSuggestion('');
+  };
+
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
 
   return (
-    <div onMouseDown={e => e.stopPropagation()}>
+    <div >
+      {/* --- NEW: AI Button and Suggestion Modal --- */}
+      {popupPosition && (
+        <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
+          <button
+            onMouseDown={handleRephraseClick}
+            className="flex items-center gap-1 bg-purple-600 text-white px-2 py-1 rounded-md text-xs shadow-lg hover:bg-purple-700 transition-transform transform hover:scale-105"
+            disabled={isLoadingAI}
+          >
+            <Sparkles size={14} className={isLoadingAI ? "animate-spin" : ""} />
+            {isLoadingAI ? 'Thinking...' : 'Improve'}
+          </button>
+        </div>
+      )}
+
+      {suggestion && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-md animate-fade-in-up">
+            <h3 className="font-bold text-lg mb-2">AI Suggestion</h3>
+            <p className="text-sm text-gray-500 mb-1">Original:</p>
+            <blockquote className="bg-gray-100 p-3 rounded text-sm mb-4 border-l-4 border-gray-300">"{selectedText}"</blockquote>
+            <p className="text-sm text-gray-500 mb-1">Suggestion:</p>
+            <blockquote className="bg-purple-100 p-3 rounded text-sm mb-6 border-l-4 border-purple-400">{suggestion}</blockquote>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setSuggestion('')} className="px-4 py-2 rounded text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+              <button onClick={acceptSuggestion} className="px-4 py-2 rounded bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700">Accept Suggestion</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!itemsToRender && data.length === 0 && (
         <button
           onClick={addEntry}
@@ -294,19 +405,39 @@ export default function ExperienceSection({
         </button>
       )}
 
-      {/* FIX: Map over the stable renderIndices array */}
       {renderIndices.map((idx) => {
-        if (idx >= data.length) return null; // Safeguard
+        if (idx >= data.length) return null;
 
-        // FIX: Access the item data using the stable index
         const item = data[idx];
         const isFocused = focusIdx === idx;
         const settings  = item.settings || defaultSettings;
         const align     = item.align    || defaultAlignment;
+        
+        const isFirstItemInChunk = itemsToRender ? idx === itemsToRender[0] : idx === 0;
+        const shouldFlipToolbar = isFirstOnPage && isFirstItemInChunk;
+
+        const toolbarStyle = {
+          fontSize: '1rem',
+          position: 'absolute',
+          right: 0,
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          background: '#fff',
+          border: '1px solid #ddd',
+          borderRadius: '.25rem',
+          padding: '.25rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          zIndex: 10,
+          ...(shouldFlipToolbar
+            ? { top: '100%', marginTop: '0.5rem' }
+            : { top: '-3rem' }
+          ),
+        };
 
         return (
           <div
-            key={idx} // FIX: Use stable index for the key
+            key={idx}
             style={{
               position: 'relative',
               padding: isFocused ? '0.5rem' : '0.25rem 0.5rem',
@@ -318,7 +449,7 @@ export default function ExperienceSection({
           >
             {isFocused && (
               <div
-                style={{ fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0, display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', padding: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 10 }}
+                style={toolbarStyle}
                 onMouseDown={e => e.preventDefault()}
               >
                 <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={addEntry}>+ Entry</button>
@@ -351,8 +482,49 @@ export default function ExperienceSection({
                 {settings.location && (isFocused ? (<input type="text" value={item.location} onChange={e => handleFieldChange(idx, 'location', e.target.value)} onFocus={() => handleFocusWithDelay(idx)} onBlur={handleBlurWithDelay} placeholder="Location" style={{ color: '#080808', flex:'1 1 auto', minWidth:'100px', fontSize: `${(0.55 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius:'.25rem', padding:'0.2rem', background:'#fff', outline:'none', textAlign:align, boxSizing: 'border-box' }} />) : (<div style={{ color: '#080808', flex:'1 1 auto', minWidth:'100px', fontSize: `${(0.55 + offset).toFixed(3)}rem`, textAlign:align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.2rem' }} onClick={() => handleFocusWithDelay(idx)}>{item.location || 'Location'}</div>))}
               </div>
             </div>
-            {settings.description && (isFocused ? (<textarea ref={el => (refs.current[`desc-${idx}`] = el)} value={item.description} onChange={e => handleFieldChange(idx, 'description', e.target.value)} onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} onFocus={() => handleFocusWithDelay(idx)} onBlur={handleBlurWithDelay} placeholder="Brief company/role summary..." style={{ color: '#080808', width:'100%', border: '1px solid #ccc', borderRadius:'.25rem', padding:'0.2rem', marginBottom:'0.75rem', resize:'none', overflow:'hidden', background:'#fff', outline:'none', fontSize: `${(0.675 + offset).toFixed(3)}rem`, textAlign:align, boxSizing: 'border-box' }} />) : (<div style={{ color: '#080808', width:'100%', marginBottom:'0.75rem', fontSize: `${(0.675 + offset).toFixed(3)}rem`, textAlign:align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.2rem', minHeight: '2rem', color: item.description.trim() === '' ? '#a0a0a0' : 'inherit' }} onClick={() => handleFocusWithDelay(idx)}>{item.description || 'Brief company/role summary...'}</div>))}
-            {settings.bullets && (<ul style={{ listStyle:'none', paddingLeft:'1.25rem', marginBottom:'0.5rem', color: '#080808' }}>{item.bullets.map((bullet, bIdx) => (<li key={bIdx} style={{ marginBottom:'0rem', fontSize: `${(0.8 + offset).toFixed(3)}rem`, paddingLeft: '0' }}><div style={{ display:'flex', alignItems:'flex-start', gap:'0.5rem' }}><span style={{lineHeight:1, }}>&bull;</span>{isFocused ? (<textarea ref={el => (refs.current[`${idx}-bullet-${bIdx}`] = el)} value={bullet} onChange={e => handleBulletChange(idx, bIdx, e.target.value)} onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const currentBulletText = e.target.value; const cursorPosition = e.target.selectionStart; const textBeforeCursor = currentBulletText.substring(0, cursorPosition); const textAfterCursor = currentBulletText.substring(cursorPosition); handleBulletChange(idx, bIdx, textBeforeCursor); addBulletAt(idx, bIdx, textAfterCursor); } }} onFocus={() => handleFocusWithDelay(idx)} onBlur={handleBlurWithDelay} placeholder="Bullet point..." rows={1} style={{ flex:'1 1 auto', border:'1px solid #ccc', borderRadius:'.25rem', background:'#fff', outline:'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, resize:'none', overflow:'hidden', padding:'0.25rem', textAlign:align, boxSizing: 'border-box' }} />) : (<div style={{ flex:'1 1 auto', whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', textAlign:align, fontSize: `${(0.6 + offset).toFixed(3)}rem`, padding:'0', minHeight: '1.5rem', color: bullet.trim() === '' ? '#a0a0a0' : 'inherit' }} onClick={() => handleFocusWithDelay(idx)}>{bullet || 'Bullet point...'}</div>)}{isFocused && ( <button onMouseDown={e => { e.preventDefault(); removeBullet(idx, bIdx); }} style={{ fontSize:'0.75rem', color:'#dc2626', background:'transparent', border:'none', cursor:'pointer' }}> ✕ </button> )}</div></li>))}{isFocused && (<li><button onClick={() => addBulletAt(idx, item.bullets.length -1)} style={{ fontSize: '0.875rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', marginTop: '0.5rem', marginLeft: '-0.75rem' }}>➕ Bullet</button></li>)}</ul>)}
+            {settings.description && (isFocused ? (
+              <textarea 
+                ref={el => (refs.current[`desc-${idx}`] = el)} 
+                value={item.description} 
+                onChange={e => handleFieldChange(idx, 'description', e.target.value)} 
+                onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} 
+                onFocus={() => handleFocusWithDelay(idx)} 
+                onBlur={handleBlurWithDelay} 
+                onSelect={(e) => handleTextSelect(e, idx, 'description')}
+                placeholder="Brief company/role summary..." 
+                style={{ color: '#080808', width:'100%', border: '1px solid #ccc', borderRadius:'.25rem', padding:'0.2rem', marginBottom:'0.75rem', resize:'none', overflow:'hidden', background:'#fff', outline:'none', fontSize: `${(0.675 + offset).toFixed(3)}rem`, textAlign:align, boxSizing: 'border-box' }} 
+              />
+            ) : (<div style={{ color: '#080808', width:'100%', marginBottom:'0.75rem', fontSize: `${(0.675 + offset).toFixed(3)}rem`, textAlign:align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0.2rem', minHeight: '2rem', color: item.description.trim() === '' ? '#a0a0a0' : 'inherit' }} onClick={() => handleFocusWithDelay(idx)}>{item.description || 'Brief company/role summary...'}</div>))}
+            {settings.bullets && (
+              <ul style={{ listStyle:'none', paddingLeft:'1.25rem', marginBottom:'0.5rem', color: '#080808' }}>
+                {item.bullets.map((bullet, bIdx) => (
+                  <li key={bIdx} style={{ marginBottom:'0rem', fontSize: `${(0.8 + offset).toFixed(3)}rem`, paddingLeft: '0' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:'0.5rem' }}>
+                      <span style={{lineHeight:1, }}>&bull;</span>
+                      {isFocused ? (
+                        <textarea 
+                          ref={el => (refs.current[`${idx}-bullet-${bIdx}`] = el)} 
+                          value={bullet} 
+                          onChange={e => handleBulletChange(idx, bIdx, e.target.value)} 
+                          onInput={e => { e.target.style.height='auto'; e.target.style.height=`${e.target.scrollHeight}px`; }} 
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const currentBulletText = e.target.value; const cursorPosition = e.target.selectionStart; const textBeforeCursor = currentBulletText.substring(0, cursorPosition); const textAfterCursor = currentBulletText.substring(cursorPosition); handleBulletChange(idx, bIdx, textBeforeCursor); addBulletAt(idx, bIdx, textAfterCursor); } }} 
+                          onFocus={() => handleFocusWithDelay(idx)} 
+                          onBlur={handleBlurWithDelay} 
+                          onSelect={(e) => handleTextSelect(e, idx, 'bullets', bIdx)}
+                          placeholder="Bullet point..." 
+                          rows={1} 
+                          style={{ flex:'1 1 auto', border:'1px solid #ccc', borderRadius:'.25rem', background:'#fff', outline:'none', fontSize: `${(0.6 + offset).toFixed(3)}rem`, resize:'none', overflow:'hidden', padding:'0.25rem', textAlign:align, boxSizing: 'border-box' }} 
+                        />
+                      ) : (
+                        <div style={{ flex:'1 1 auto', whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', textAlign:align, fontSize: `${(0.6 + offset).toFixed(3)}rem`, padding:'0', minHeight: '1.5rem', color: bullet.trim() === '' ? '#a0a0a0' : 'inherit' }} onClick={() => handleFocusWithDelay(idx)}>{bullet || 'Bullet point...'}</div>
+                      )}
+                      {isFocused && ( <button onMouseDown={e => { e.preventDefault(); removeBullet(idx, bIdx); }} style={{ fontSize:'0.75rem', color:'#dc2626', background:'transparent', border:'none', cursor:'pointer' }}> ✕ </button> )}
+                    </div>
+                  </li>
+                ))}
+                {isFocused && (<li><button onClick={() => addBulletAt(idx, item.bullets.length -1)} style={{ fontSize: '0.875rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', marginTop: '0.5rem', marginLeft: '-0.75rem' }}>➕ Bullet</button></li>)}
+              </ul>
+            )}
           </div>
         );
       })}

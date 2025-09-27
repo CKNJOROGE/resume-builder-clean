@@ -16,7 +16,6 @@ import HobbiesSection from '../components/sections/HobbiesSection';
 import MyTimeSection from '../components/sections/MyTimeSection';
 import IndustrialExpertiseSection from '../components/sections/IndustrialExpertiseSection';
 import AwardsSection from '../components/sections/AwardsSection';
-import KeyAchievementsSection from '../components/sections/KeyAchievementsSection';
 import ProfessionalStrengthsSection from '../components/sections/ProfessionalStrengthsSection';
 import BooksSection from '../components/sections/BooksSection';
 import VolunteeringSection from '../components/sections/VolunteeringSection';
@@ -40,7 +39,6 @@ const sectionComponentMap = {
     industrialExpertise: IndustrialExpertiseSection,
     myTime: MyTimeSection,
     awards: AwardsSection,
-    keyAchievements: KeyAchievementsSection,
     professionalStrengths: ProfessionalStrengthsSection,
     books: BooksSection,
     volunteering: VolunteeringSection,
