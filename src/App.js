@@ -2,11 +2,10 @@ import React from 'react';
 import {
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate
+  Route
 } from 'react-router-dom';
 
-import { AuthProvider, useAuth } from './components/AuthContext';
+import { AuthProvider } from './components/AuthContext';
 import Homepage from './components/Homepage';
 import LoginForm from './components/LoginForm';
 import SignupForm from './components/SignupForm';
@@ -14,78 +13,19 @@ import SelectTemplate from './components/SelectTemplate';
 import Editor from './components/Editor';
 import Paywall from './components/Paywall';
 
-
-
-const ProtectedRoute = ({ children }) => {
-  const { authToken, premium } = useAuth();
-
-  if (!authToken) {
-    return <Navigate to="/login" />;
-  }
-
-  // This ProtectedRoute now explicitly checks for premium status.
-  // If access to 'select-template' or 'editor' requires premium, this is correct.
-  // If not, you might need a different ProtectedRoute or check within components.
-  if (!premium) {
-    return <Navigate to="/paywall" />;
-  }
-
-  return children;
-};
-
-
 function App() {
   return (
     <AuthProvider>
       <Router>
-<Routes>
-
-          {/* 1. Public landing page */}
+        <Routes>
           <Route path="/" element={<Homepage />} />
+          <Route path="/login" element={<LoginForm onSwitch={() => window.location.href = '/signup'} />} />
+          <Route path="/signup" element={<SignupForm onSwitch={() => window.location.href = '/login'} />} />
 
-          {/* Login Route */}
-          <Route
-            path="/login"
-            element={
-              <LoginForm
-                
-                onSwitch={() => window.location.href = '/signup'}
-              />
-            }
-          />
+          {/* These routes are now public to allow for the guest flow */}
+          <Route path="/select-template" element={<SelectTemplate />} />
+          <Route path="/editor/:resumeId" element={<Editor />} />
 
-          {/* Signup Route */}
-          <Route
-            path="/signup"
-            element={
-              <SignupForm
-                
-                onSwitch={() => window.location.href = '/login'}
-              />
-            }
-          />
-
-          {/* Select Template Route - Protected */}
-          <Route
-            path="/select-template"
-            element={
-              <ProtectedRoute>
-                <SelectTemplate />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Editor Route - Now uses a specific path with a dynamic parameter */}
-          <Route
-            path="/editor/:resumeId" // Editor should have a unique path
-            element={
-              <ProtectedRoute>
-                <Editor />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Paywall Route */}
           <Route path="/paywall" element={<Paywall />} />
         </Routes>
       </Router>
