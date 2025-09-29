@@ -258,12 +258,14 @@ const SelectTemplate = () => {
             </p>
           )}
         </div>
+        {authToken && (
         <button
           onClick={handleLogout}
           className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out"
         >
           Logout
         </button>
+        )}
       </header>
       <div className="relative z-10 container mx-auto px-4 pb-12">
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
