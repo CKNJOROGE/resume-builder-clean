@@ -75,9 +75,9 @@ const Paywall = () => {
                 <li>Select "Lipa na M-Pesa"</li>
                 <li>Select "Till Number"</li>
                 <li>Enter Business No: <strong>9329169</strong></li>
-                <li>Enter Amount: <strong>300</strong></li>
+                <li>Enter Amount: <strong>500</strong></li>
                 <li>Enter your M-Pesa PIN and confirm.</li>
-                <li>Copy the transaction ID (e.g., QJ25XXXXXX) and paste it below.</li>
+                <li>Copy the transaction ID (e.g., TJ25XXXXXX) and paste it below.</li>
             </ol>
         </div>
         
