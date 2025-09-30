@@ -88,7 +88,7 @@ const DEFAULT_TEMPLATE_CONFIGS = {
 
 const templates = [
   { name: 'modern', title: 'Modern Resume', description: 'Clean, structured layout for professionals.' },
-  { name: 'classic', title: 'Traditional Resume', description: 'Traditional resume layout with simplicity.' },
+  // { name: 'classic', title: 'Traditional Resume', description: 'Traditional resume layout with simplicity.' }, // Temporarily hidden
   { name: 'ats', title: 'ATS Resume', description: 'Optimized for applicant tracking systems.' },
 ];
 
