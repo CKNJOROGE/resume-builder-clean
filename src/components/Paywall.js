@@ -41,7 +41,7 @@ const Paywall = () => {
         }
 
         // Change the message and start the 60-second timer in the browser
-        setMessage('Success! Redirecting in 60 seconds...');
+        setMessage('Verifying your payment... may take about 60 seconds....');
         
         setTimeout(() => {
           navigate('/select-template');

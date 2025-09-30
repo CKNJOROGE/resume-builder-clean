@@ -315,15 +315,7 @@ const Editor = () => {
             <button onClick={handleDownloadClick} disabled={isDeducting} className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50">
               {isDeducting ? 'Processing...' : 'Download as PDF'}
             </button>
-            <div onClickCapture={handleAdvancedDownloadClick}>
-              <PDFDownloadLink
-                document={<MyResumePDF resumeData={liveResume?.data} />}
-                fileName="resume.pdf"
-                className={`block px-3 py-1 bg-blue-600 text-white rounded ${isDeducting ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {({ loading }) => (loading || isDeducting) ? 'Loading...' : 'Download (Advanced)'}
-              </PDFDownloadLink>
-            </div>
+            
             {authToken && (<button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>)}
           </div>
         </div>
