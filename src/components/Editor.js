@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import MyResumePDF from './MyResumePDF';
 import html2pdf from 'html2pdf.js';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft, CreditCard } from 'lucide-react'; // Added CreditCard icon
 
 import TemplateModern from '../templates/TemplateModern';
 import TemplateClassic from '../templates/TemplateClassic';
@@ -183,15 +185,15 @@ const Editor = () => {
       if (res.ok) {
         const data = await res.json();
         updateUserCredits(data.new_credits);
-        return true;
+        return true; // Indicate success
       } else {
         const errorData = await res.json();
         alert(`Error: ${errorData.error || 'Could not process download. Please try again.'}`);
-        return false;
+        return false; // Indicate failure
       }
     } catch (err) {
       alert("A network error occurred. Please check your connection.");
-      return false;
+      return false; // Indicate failure
     } finally {
       setIsDeducting(false);
     }
@@ -226,6 +228,22 @@ const Editor = () => {
     const success = await deductCredits();
     if (success) {
       generatePdfFromHtml();
+    }
+  };
+  
+  const handleAdvancedDownloadClick = async (e) => {
+    if (!authToken || resumeId.startsWith('guest-')) {
+      e.preventDefault();
+      return navigate('/login', { state: { from: location.pathname } });
+    }
+    if (user?.credits < 100) {
+      e.preventDefault();
+      alert("You need at least 100 credits to download.");
+      return navigate('/paywall');
+    }
+    const success = await deductCredits();
+    if (!success) {
+      e.preventDefault(); // Stop download if credit deduction fails
     }
   };
   
@@ -297,7 +315,15 @@ const Editor = () => {
             <button onClick={handleDownloadClick} disabled={isDeducting} className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50">
               {isDeducting ? 'Processing...' : 'Download as PDF'}
             </button>
-            {/* The "Download (Advanced)" button has been removed */}
+            <div onClickCapture={handleAdvancedDownloadClick}>
+              <PDFDownloadLink
+                document={<MyResumePDF resumeData={liveResume?.data} />}
+                fileName="resume.pdf"
+                className={`block px-3 py-1 bg-blue-600 text-white rounded ${isDeducting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {({ loading }) => (loading || isDeducting) ? 'Loading...' : 'Download (Advanced)'}
+              </PDFDownloadLink>
+            </div>
             {authToken && (<button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>)}
           </div>
         </div>
