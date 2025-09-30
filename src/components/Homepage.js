@@ -18,7 +18,7 @@ const features = [
   {
     icon: <FileText className="w-12 h-12 text-blue-600 mb-4" />,
     title: 'Easy Export',
-    description: 'Download your resume as PDF or share a live link instantly.',
+    description: 'Download your resume as PDF' ,
   },
 ];
 
@@ -36,7 +36,7 @@ const steps = [
   {
     icon: <Download className="w-10 h-10 text-purple-600 mb-2" />,
     title: 'Export & Share',
-    desc: 'Download as PDF or send a live online link to recruiters.',
+    desc: 'Download as PDF ',
   },
 ];
 

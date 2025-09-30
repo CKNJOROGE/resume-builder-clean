@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { AuthContext } from './AuthContext';
 
 const Paywall = () => {
   const navigate = useNavigate();
-  // We'll need updateUserCredits from the context eventually
-  const { authToken, updateUserCredits } = useAuth();
+  const { authToken, updateUserCredits } = useContext(AuthContext);
   const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,10 +18,9 @@ const Paywall = () => {
     }
     setLoading(true);
     setError('');
-    setMessage('Verifying your payment... This will take about 10 seconds.');
+    setMessage('Processing your confirmation...');
 
     try {
-      // Use the environment variable for the production API URL
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/manual-payment-confirm/`;
       
       const res = await fetch(apiUrl, {
@@ -36,16 +34,19 @@ const Paywall = () => {
 
       if (res.ok) {
         const data = await res.json();
-        setMessage('Success! Credits have been added to your account.');
-
-        // Update the global state with the new credit balance from the backend
+        
+        // Update credits in the global state immediately
         if (updateUserCredits) {
           updateUserCredits(data.new_credits);
         }
+
+        // Change the message and start the 60-second timer in the browser
+        setMessage('Success! Redirecting in 60 seconds...');
         
         setTimeout(() => {
           navigate('/select-template');
-        }, 2000); // Wait 2 seconds so the user can see the success message
+        }, 60000); // 60,000 milliseconds = 60 seconds
+
       } else {
         const errorData = await res.json();
         setError(errorData.error || 'Something went wrong. Please check the ID and try again.');
@@ -72,8 +73,9 @@ const Paywall = () => {
             <ol className="list-decimal list-inside space-y-2 text-gray-700">
                 <li>Go to your M-Pesa Menu</li>
                 <li>Select "Lipa na M-Pesa"</li>
-                <li>Select "Mpesa Till"</li>
-                <li>Enter Till Number: <strong>9329169</strong></li>
+                <li>Select "Pay Bill"</li>
+                <li>Enter Business No: <strong>XXXXXX</strong></li>
+                <li>Enter Account No: <strong>Your Email Address</strong></li>
                 <li>Enter Amount: <strong>300</strong></li>
                 <li>Enter your M-Pesa PIN and confirm.</li>
                 <li>Copy the transaction ID (e.g., QJ25XXXXXX) and paste it below.</li>
@@ -90,14 +92,15 @@ const Paywall = () => {
             onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
             placeholder="Paste M-Pesa Transaction ID here"
             required
-            className="w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={loading} // Disable input after submission
+            className="w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
           />
           <button
             type="submit"
             disabled={loading}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition w-full disabled:opacity-50 disabled:cursor-wait"
+            className="bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Confirming...' : 'Confirm Payment'}
+            {loading ? 'Processing...' : 'Confirm Payment'}
           </button>
         </form>
         <div className="mt-4">
