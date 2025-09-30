@@ -254,7 +254,7 @@ const SelectTemplate = () => {
           </h1>
           {user && (
             <p className="text-gray-200">
-              Welcome back, <span className="font-medium">{user}</span>!
+              Welcome back, <span className="font-medium">{user.email}</span>!
             </p>
           )}
         </div>
