@@ -1,18 +1,18 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('token'));
+  
+  // The user state now holds an object with user details, including credits
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('user')) || null;
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
     } catch {
-      return localStorage.getItem('user') || null;
+      return null;
     }
-  });
-  const [premium, setPremium] = useState(() => {
-    return localStorage.getItem('premium') === 'true';
   });
 
   const login = async (email, password) => {
@@ -26,48 +26,48 @@ export const AuthProvider = ({ children }) => {
       if (res.ok) {
         const data = await res.json();
         
+        // Create a user object with the email and new credits value from the backend
+        const userData = {
+          email: email,
+          credits: data.credits,
+        };
+
         setAuthToken(data.access);
-        setUser(email);
-        setPremium(data.premium);
+        setUser(userData);
 
         localStorage.setItem('token', data.access);
-        localStorage.setItem('user', JSON.stringify(email));
-        localStorage.setItem('premium', data.premium.toString());
+        localStorage.setItem('user', JSON.stringify(userData)); // Store the entire user object
 
-        // --- NEW: Check for and save a pending guest resume ---
+        // Guest resume migration logic remains the same
         const pendingGuestResumeId = localStorage.getItem('pendingGuestResumeId');
         if (pendingGuestResumeId) {
           const guestResumeJSON = localStorage.getItem(pendingGuestResumeId);
           if (guestResumeJSON) {
             const guestResume = JSON.parse(guestResumeJSON);
             
-            // Save the guest resume to the server under the new user's account
             const saveRes = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${data.access}`, // Use the new token
+                'Authorization': `Bearer ${data.access}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 template: guestResume.template,
-                title: guestResume.title.replace('Guest ', ''), // Clean up the title
+                title: guestResume.title.replace('Guest ', ''),
                 data: guestResume.data,
               }),
             });
 
             if (saveRes.ok) {
               const savedResume = await saveRes.json();
-              // Clean up localStorage
               localStorage.removeItem(pendingGuestResumeId);
               localStorage.removeItem('pendingGuestResumeId');
-              // Return success and the new, permanent resume ID
               return { success: true, resumeId: savedResume.id };
             }
           }
         }
-        // End of new logic
 
-        return { success: true, resumeId: null }; // Normal login, no guest resume found
+        return { success: true, resumeId: null };
       } else {
         console.error('Login failed:', res.status);
         return { success: false };
@@ -85,7 +85,6 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
       });
-      // Return true on success to signal that we can now log the user in
       return res.ok;
     } catch (err) {
       console.error('Signup error:', err);
@@ -96,17 +95,33 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setAuthToken(null);
     setUser(null);
-    setPremium(false);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('premium');
+  };
+
+  // New function to allow components to update the credit balance in the context
+  const updateUserCredits = (newCreditAmount) => {
+    if (user) {
+      const updatedUser = { ...user, credits: newCreditAmount };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
+
+  const contextValue = {
+    authToken,
+    user, // The user object now contains credits: user.credits
+    login,
+    logout,
+    signup,
+    updateUserCredits, // Provide the new function to the app
   };
 
   return (
-    <AuthContext.Provider value={{ authToken, user, premium, login, logout, signup, setPremium }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => React.useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);

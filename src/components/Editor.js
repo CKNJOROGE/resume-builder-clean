@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import MyResumePDF from './MyResumePDF';
 import html2pdf from 'html2pdf.js';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CreditCard } from 'lucide-react'; // Added CreditCard icon
 
 import TemplateModern from '../templates/TemplateModern';
 import TemplateClassic from '../templates/TemplateClassic';
@@ -45,7 +45,7 @@ const debounce = (func, delay) => {
 };
 
 const Editor = () => {
-  const { authToken, logout } = useContext(AuthContext);
+  const { authToken, logout, user, updateUserCredits } = useContext(AuthContext);
   const { resumeId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +56,7 @@ const Editor = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showSections, setShowSections] = useState(false);
   const [showLayoutManager, setShowLayoutManager] = useState(false);
+  const [isDeducting, setIsDeducting] = useState(false);
   const resumeContentRef = useRef(null);
 
   useEffect(() => {
@@ -93,9 +94,7 @@ const Editor = () => {
   
   const saveResume = useCallback(async (resumeToSave) => {
     if (!resumeToSave) return;
-
     const isGuest = typeof resumeToSave.id === 'string' && resumeToSave.id.startsWith('guest-');
-
     if (isGuest) {
       localStorage.setItem(resumeToSave.id, JSON.stringify(resumeToSave));
     } else if (authToken) {
@@ -133,8 +132,7 @@ const Editor = () => {
         return newResume;
     });
   }, [updateDebouncedStateAndSave]);
-
-  // --- 1. ADD THIS FUNCTION TO HANDLE THE IMAGE UPLOAD ---
+  
   const uploadProfileImage = async (file) => {
     if (!file || !authToken || resumeId.startsWith('guest-')) {
       if (resumeId.startsWith('guest-')) {
@@ -142,41 +140,28 @@ const Editor = () => {
       }
       return;
     }
-
     const formData = new FormData();
     formData.append('profile_image', file);
-
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          // No 'Content-Type' header is needed; the browser sets it automatically for FormData
-        },
+        headers: { 'Authorization': `Bearer ${authToken}` },
         body: formData,
       });
-
       if (res.ok) {
         const updatedResumeFromServer = await res.json();
         const newImageUrl = updatedResumeFromServer.profile_image;
-
-        // Update the live state immediately to show the new image
         setLiveResume(currentResume => {
           const newResumeState = {
             ...currentResume,
             data: {
               ...currentResume.data,
-              header: {
-                ...currentResume.data.header,
-                profileImage: newImageUrl,
-              }
+              header: { ...currentResume.data.header, profileImage: newImageUrl }
             }
           };
-          // Trigger the debounced save to persist the new image URL in the main data object
           updateDebouncedStateAndSave(newResumeState);
           return newResumeState;
         });
-
       } else {
         alert('Image upload failed. The file may be too large or not a valid image.');
       }
@@ -186,62 +171,97 @@ const Editor = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
+  const deductCredits = async () => {
+    if (isDeducting) return false;
+    
+    setIsDeducting(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/deduct-credits/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ amount: 100 }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        updateUserCredits(data.new_credits);
+        return true; // Indicate success
+      } else {
+        const errorData = await res.json();
+        alert(`Error: ${errorData.error || 'Could not process download. Please try again.'}`);
+        return false; // Indicate failure
+      }
+    } catch (err) {
+      alert("A network error occurred. Please check your connection.");
+      return false; // Indicate failure
+    } finally {
+      setIsDeducting(false);
+    }
+  };
+
+  const generatePdfFromHtml = () => {
     const element = resumeContentRef.current;
     if (!element) return;
     document.body.classList.add('pdf-generating');
     setTimeout(() => {
       const opt = {
-        margin: 0,
-        filename: 'my_resume.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        margin: 0, filename: 'my_resume.pdf', image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'legacy'], after: '.resume-page' }
       };
       html2pdf().from(element).set(opt).toPdf().get('pdf').then(pdf => {
-        if (pdf.internal.getNumberOfPages() > 1) {
-            pdf.deletePage(pdf.internal.getNumberOfPages());
-        }
+        if (pdf.internal.getNumberOfPages() > 1) pdf.deletePage(pdf.internal.getNumberOfPages());
         pdf.save();
-      }).catch(err => {
-        console.error("PDF generation failed:", err);
-      }).finally(() => {
-        document.body.classList.remove('pdf-generating');
-      });
+      }).catch(err => console.error("PDF generation failed:", err)
+      ).finally(() => document.body.classList.remove('pdf-generating'));
     }, 800);
   };
+
+  const handleDownloadClick = async () => {
+    if (!authToken || resumeId.startsWith('guest-')) {
+      return navigate('/login', { state: { from: location.pathname } });
+    }
+    if (user?.credits < 100) {
+      alert("You need at least 100 credits to download.");
+      return navigate('/paywall');
+    }
+    const success = await deductCredits();
+    if (success) {
+      generatePdfFromHtml();
+    }
+  };
   
-  const handleDownloadClick = () => {
-    if (authToken) {
-      handleDownloadPdf(); 
-    } else {
-      navigate('/login', { state: { from: location.pathname } });
+  const handleAdvancedDownloadClick = async (e) => {
+    if (!authToken || resumeId.startsWith('guest-')) {
+      e.preventDefault();
+      return navigate('/login', { state: { from: location.pathname } });
+    }
+    if (user?.credits < 100) {
+      e.preventDefault();
+      alert("You need at least 100 credits to download.");
+      return navigate('/paywall');
+    }
+    const success = await deductCredits();
+    if (!success) {
+      e.preventDefault(); // Stop download if credit deduction fails
     }
   };
   
   const handleVisibilityChange = (newVisibleSections) => {
     setLiveResume(currentResume => {
       if (!currentResume) return null;
-      
       const newResumeData = { ...currentResume.data, visibleSections: newVisibleSections };
       const oldVisibleSections = currentResume.data.visibleSections || {};
-
       Object.keys(newVisibleSections).forEach(key => {
         const wasVisible = oldVisibleSections[key];
         const isNowVisible = newVisibleSections[key];
         const sectionData = newResumeData[key];
-
         if (isNowVisible && !wasVisible && Array.isArray(sectionData) && sectionData.length === 0) {
           const defaultEntry = DEFAULT_SECTION_ENTRY[key];
-          if (defaultEntry) {
-            newResumeData[key] = Array.isArray(defaultEntry) ? defaultEntry : [defaultEntry];
-          }
+          if (defaultEntry) newResumeData[key] = Array.isArray(defaultEntry) ? defaultEntry : [defaultEntry];
         }
       });
-      
       const newResume = { ...currentResume, data: newResumeData };
-
       updateDebouncedStateAndSave(newResume);
       return newResume;
     });
@@ -271,28 +291,9 @@ const Editor = () => {
 
   return (
     <div className="relative flex h-screen bg-gray-100">
-      {showSections && (
-        <SectionTogglePanel
-          visibleSections={liveResume?.data?.visibleSections}
-          onChange={handleVisibilityChange}
-          onClose={() => setShowSections(false)}
-          templateName={liveResume?.template}
-        />
-      )}
-      {showSettings && (
-        <DesignSettingsPanel
-          design={liveResume?.data?.design}
-          handleEdit={updateDesign}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-      {showLayoutManager && (
-        <LayoutManager
-          layout={getReorderableLayout()}
-          onLayoutChange={(newLayout) => updateField('layout', newLayout)}
-          onClose={() => setShowLayoutManager(false)}
-        />
-      )}
+      {showSections && (<SectionTogglePanel visibleSections={liveResume?.data?.visibleSections} onChange={handleVisibilityChange} onClose={() => setShowSections(false)} templateName={liveResume?.template} />)}
+      {showSettings && (<DesignSettingsPanel design={liveResume?.data?.design} handleEdit={updateDesign} onClose={() => setShowSettings(false)} />)}
+      {showLayoutManager && (<LayoutManager layout={getReorderableLayout()} onLayoutChange={(newLayout) => updateField('layout', newLayout)} onClose={() => setShowLayoutManager(false)} />)}
       <div className="flex-1 overflow-auto min-h-0">
         <div className="flex justify-between items-center p-4 shadow bg-white sticky top-0 z-10">
           <div className="flex items-center gap-4">
@@ -301,35 +302,34 @@ const Editor = () => {
             </Link>
             <h2 className="text-xl font-semibold">Resume Editor</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {user && (
+              <div className="flex items-center gap-1 bg-green-100 text-green-800 text-sm font-semibold px-2 py-1 rounded-full">
+                <CreditCard size={16} />
+                <span>{user.credits || 0} Credits</span>
+              </div>
+            )}
             <button onClick={() => setShowLayoutManager(true)} className="px-3 py-1 bg-purple-600 text-white rounded">Layout</button>
             <button onClick={() => setShowSettings(true)} className="px-3 py-1 bg-gray-700 text-white rounded">Design</button>
             <button onClick={() => setShowSections(true)} className="px-3 py-1 bg-indigo-600 text-white rounded">Sections</button>
-            <button onClick={handleDownloadClick} className="px-3 py-1 bg-green-600 text-white rounded">
-              Download as PDF
+            <button onClick={handleDownloadClick} disabled={isDeducting} className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50">
+              {isDeducting ? 'Processing...' : 'Download as PDF'}
             </button>
-            {authToken ? (
+            <div onClickCapture={handleAdvancedDownloadClick}>
               <PDFDownloadLink
                 document={<MyResumePDF resumeData={liveResume?.data} />}
                 fileName="resume.pdf"
-                className="px-3 py-1 bg-blue-600 text-white rounded"
+                className={`block px-3 py-1 bg-blue-600 text-white rounded ${isDeducting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {({ loading }) => (loading ? 'Loading...' : 'Download (Advanced)')}
+                {({ loading }) => (loading || isDeducting) ? 'Loading...' : 'Download (Advanced)'}
               </PDFDownloadLink>
-            ) : (
-              <button onClick={handleDownloadClick} className="px-3 py-1 bg-blue-600 text-white rounded">
-                Download (Advanced)
-              </button>
-            )}
-            {authToken && (
-              <button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>
-            )}
+            </div>
+            {authToken && (<button onClick={logout} className="px-3 py-1 bg-red-600 text-white rounded">Logout</button>)}
           </div>
         </div>
         {debouncedResume && (
           <div className="paged-editor-container" style={{ padding: '5px 0', margin: '0 auto' }}>
             <div id="resume-canvas" ref={resumeContentRef}>
-               {/* --- 2. PASS THE FUNCTION AS A PROP TO THE TEMPLATES --- */}
                {templateName === 'classic' && <TemplateClassic {...templateProps} uploadProfileImage={uploadProfileImage} />}
                {templateName === 'ats' && <TemplateATS {...templateProps} uploadProfileImage={uploadProfileImage} />}
                {(!templateName || templateName === 'modern') && <TemplateModern {...templateProps} uploadProfileImage={uploadProfileImage} />}

@@ -54,26 +54,28 @@ const templates = [
   },
 ];
 
+// --- UPDATED PRICING FOR CREDIT SYSTEM ---
 const pricing = [
   {
-    title: 'Free',
-    price: '$0',
-    features: ['3 Templates', 'Basic Editing', 'PDF Export'],
-    cta: 'Start Free',
-  },
-  {
-    title: 'Pro',
-    price: '$9/mo',
-    features: ['All Templates', 'Unlimited Edits', 'Live Link', 'Priority Support'],
-    cta: 'Upgrade Now',
+    title: 'Buy Credits',
+    price: 'KES 300',
+    description: 'for 300 credits',
+    features: [
+        '300 Credits on Purchase',
+        '100 Credits per PDF Download',
+        'Access to All Templates',
+        'AI-Powered Content Suggestions'
+    ],
+    cta: 'Get Credits',
     popular: true,
   },
 ];
 
+// --- UPDATED FAQ FOR CREDIT SYSTEM ---
 const faqs = [
-  { q: 'Can I change my template later?', a: 'Absolutely! Switch templates anytime without losing your content.' },
-  { q: 'What file formats are supported?', a: 'Export as PDF or share a fully responsive online link.' },
-  { q: 'Is there a free tier?', a: 'Yes, our free plan includes basic templates and exports.' },
+  { q: 'Can I change my template later?', a: 'Yes! You can switch templates anytime. Credits are only used when you download the final PDF.' },
+  { q: 'What file format do I get?', a: 'You can download your finished resume as a high-quality PDF, ready for job applications.' },
+  { q: 'Do credits expire?', a: 'No! Your credits never expire. Use them whenever you need to download a resume.' },
 ];
 
 export default function Homepage() {
@@ -112,14 +114,13 @@ export default function Homepage() {
         </div>
       </header>
 
-      {/* --- SECTION MOVED HERE --- */}
       {/* Template Showcase Section */}
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">Explore Our Templates</h2>
           <p className="text-gray-600">Professionally designed templates to get you started.</p>
         </div>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
           {templates.map((template, i) => (
             <motion.div
               key={i}
@@ -137,7 +138,6 @@ export default function Homepage() {
       </section>
 
       {/* Why Choose Us */}
-      {/* Background color changed to bg-gray-50 to maintain alternating pattern */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
           <h2 className="text-3xl font-bold mb-4">Why Choose Us</h2>
@@ -181,27 +181,28 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
-          <h2 className="text-3xl font-bold mb-4">Plans & Pricing</h2>
-          <p className="text-gray-600">Select a plan that fits your needs.</p>
+          <h2 className="text-3xl font-bold mb-4">Simple Pricing</h2>
+          <p className="text-gray-600">One-time payment for a bundle of credits.</p>
         </div>
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+        <div className="max-w-md mx-auto grid grid-cols-1 gap-8 px-4">
           {pricing.map((p, i) => (
             <motion.div
               key={i}
               className={`p-6 rounded-lg border bg-white ${p.popular ? 'border-blue-600 shadow-lg' : 'border-gray-200'}`}
               whileHover={{ scale: 1.02 }}
             >
-              {p.popular && <div className="text-sm text-white bg-blue-600 inline-block px-2 py-1 rounded-full mb-2">Most Popular</div>}
+              {p.popular && <div className="text-sm text-white bg-blue-600 inline-block px-2 py-1 rounded-full mb-2">Best Value</div>}
               <h3 className="text-2xl font-bold mb-2">{p.title}</h3>
-              <p className="text-4xl font-extrabold mb-4">{p.price}</p>
-              <ul className="text-gray-600 mb-6 space-y-2">
-                {p.features.map((f, j) => (<li key={j}>• {f}</li>))}
+              <p className="text-4xl font-extrabold mb-1">{p.price}</p>
+              <p className="text-gray-500 mb-4">{p.description}</p>
+              <ul className="text-gray-600 mb-6 space-y-2 text-left">
+                {p.features.map((f, j) => (<li key={j} className="flex items-center"><span className="text-green-500 mr-2">✔</span>{f}</li>))}
               </ul>
               <Link
-                to={p.title === 'Free' ? '/signup' : '/paywall'}
+                to={'/paywall'}
                 className={`block text-center px-4 py-2 rounded-lg font-semibold ${p.popular ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'} transition`}
               >
                 {p.cta}

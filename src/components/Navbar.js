@@ -7,7 +7,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0 text-white font-bold text-xl">
-            Resume Builder
+            AceMyCV
           </div>
           <div className="flex items-center space-x-4">
             <Link to="/login" className="text-white hover:bg-white/20 px-3 py-2 rounded-md text-sm font-medium transition">

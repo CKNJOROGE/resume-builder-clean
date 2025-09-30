@@ -20,21 +20,25 @@ const SignupForm = ({ onSuccess, onSwitch }) => {
     const signupSuccess = await signup(username, email, password);
     
     if (signupSuccess) {
-      // --- NEW: Automatically log the user in after signing up ---
+      // Automatically log the user in after signing up
       const loginResult = await login(email, password);
       if (loginResult.success) {
-        // If a guest resume was saved, redirect to its new editor URL
+        // If a guest resume was being worked on, take them to the editor.
         if (loginResult.resumeId) {
           navigate(`/editor/${loginResult.resumeId}`);
         } else {
-          // Otherwise, go to the default template selection page
-          navigate('/select-template');
+          // For all other new users, redirect them to the payment page.
+          navigate('/paywall');
         }
+      } else {
+        // This is an edge case, but good to handle.
+        setError('Account created, but automatic login failed. Please go to the login page.');
+        setLoading(false);
       }
     } else {
       setError('Signup failed. A user with this email may already exist.');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
 
@@ -89,7 +93,7 @@ const SignupForm = ({ onSuccess, onSwitch }) => {
             disabled={loading}
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {loading ? 'Signing up...' : 'Sign Up'}
+            {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
         </form>
         <div className="flex justify-center mt-4 text-sm">
