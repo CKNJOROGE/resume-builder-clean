@@ -1,9 +1,9 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Import Link
 import { AuthContext } from './AuthContext';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
-const LoginForm = ({ onSuccess, onSwitch }) => {
+const LoginForm = () => { // Removed onSwitch prop
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
@@ -20,11 +20,9 @@ const LoginForm = ({ onSuccess, onSwitch }) => {
     setLoading(false);
     
     if (result.success) {
-      // If a guest resume was saved, redirect to its new editor URL
       if (result.resumeId) {
         navigate(`/editor/${result.resumeId}`);
       } else {
-        // Otherwise, go to the default template selection page
         navigate('/select-template');
       }
     } else {
@@ -79,15 +77,16 @@ const LoginForm = ({ onSuccess, onSwitch }) => {
         </form>
 
         <div className="flex justify-between mt-4 text-sm">
-          <button onClick={onSwitch} className="text-purple-600 hover:underline focus:outline-none">
+          <Link to="/signup" className="text-purple-600 hover:underline focus:outline-none">
             Don’t have an account? Sign up
-          </button>
-          <button
-            onClick={() => onSwitch && onSwitch('forgot')}
+          </Link>
+          {/* Changed the button to a Link component */}
+          <Link
+            to="/forgot-password"
             className="text-purple-600 hover:underline focus:outline-none"
           >
             Forgot Password?
-          </button>
+          </Link>
         </div>
       </div>
     </div>
