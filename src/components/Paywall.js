@@ -73,9 +73,8 @@ const Paywall = () => {
             <ol className="list-decimal list-inside space-y-2 text-gray-700">
                 <li>Go to your M-Pesa Menu</li>
                 <li>Select "Lipa na M-Pesa"</li>
-                <li>Select "Pay Bill"</li>
-                <li>Enter Business No: <strong>XXXXXX</strong></li>
-                <li>Enter Account No: <strong>Your Email Address</strong></li>
+                <li>Select "Till Number"</li>
+                <li>Enter Business No: <strong>9329169</strong></li>
                 <li>Enter Amount: <strong>300</strong></li>
                 <li>Enter your M-Pesa PIN and confirm.</li>
                 <li>Copy the transaction ID (e.g., QJ25XXXXXX) and paste it below.</li>
