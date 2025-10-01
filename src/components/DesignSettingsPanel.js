@@ -135,21 +135,7 @@ const DesignSettingsPanel = ({ design = {}, handleEdit, onClose }) => {
         />
       </div>
 
-      {/* Section Spacing */}
-      /*<div className="mb-4">
-        <label className="block mb-1 font-medium">Section Spacing (rem)</label>
-        <input
-          type="number"
-          min="0"
-          step="0.25"
-          value={localDesign.spacing}
-          onChange={(e) =>
-            onFieldChange('spacing', parseFloat(e.target.value) || 0)
-          }
-          className="w-full border px-2 py-1 rounded"
-        />
-      </div>
-      */
+     
 
       {/* Title Color */}
       <div className="mb-4">
