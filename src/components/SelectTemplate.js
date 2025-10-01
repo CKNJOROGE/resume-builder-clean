@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import { FiEdit2, FiCopy, FiDownload, FiTrash2 } from 'react-icons/fi';
 import '../index.css';
+import authFetch from './authFetch';
 
 const DEFAULT_TEMPLATE_CONFIGS = {
   ats: {
@@ -106,12 +107,7 @@ const SelectTemplate = () => {
 
   const fetchResumes = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/`);
       if (res.ok) {
         const data = await res.json();
         setResumes(Array.isArray(data) ? data : []);
@@ -161,17 +157,11 @@ const SelectTemplate = () => {
 
     if (authToken) {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
+        const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            template: templateName,
+          body: JSON.stringify({ template: templateName,
             title: 'Untitled Resume',
-            data: resumeData
-          })
+            data: resumeData })
         });
         if (res.ok) {
           const created = await res.json();
@@ -202,9 +192,8 @@ const SelectTemplate = () => {
   const deleteResume = async (id) => {
     if (!window.confirm('Delete this resume?')) return;
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${id}/`, {
+      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/${id}/`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${authToken}` }
       });
       if (res.ok) fetchResumes();
       else alert(`Failed to delete (${res.status})`);
@@ -216,17 +205,11 @@ const SelectTemplate = () => {
   const duplicateResume = async (resume) => {
     const duplicatedData = JSON.parse(JSON.stringify(resume.data || {}));
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
+      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          template: resume.template,
-          title: `${resume.title} (Copy)`,
-          data: duplicatedData
-        })
+        body: JSON.stringify({ template: templateName,
+            title: 'Untitled Resume',
+            data: resumeData })
       });
       if (res.ok) fetchResumes();
       else alert(`Failed to duplicate (${res.status})`);
