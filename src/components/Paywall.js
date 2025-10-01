@@ -23,12 +23,8 @@ const Paywall = () => {
     try {
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/manual-payment-confirm/`;
       
-      const res = await fetch(apiUrl, {
+      const res = await authFetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
         body: JSON.stringify({ transaction_id: transactionId }),
       });
 
@@ -65,7 +61,7 @@ const Paywall = () => {
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
         <h1 className="text-3xl font-bold mb-2 text-gray-800">Buy Credits</h1>
         <p className="mb-6 text-gray-600">
-          Get <strong>300 credits</strong> to download your resumes.
+          Get <strong>500 credits</strong> to download your resumes.
         </p>
 
         <div className="text-left bg-gray-100 p-4 rounded-lg mb-6 border border-gray-200">
