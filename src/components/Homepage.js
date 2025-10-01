@@ -58,7 +58,7 @@ const templates = [
 const pricing = [
   {
     title: 'Buy Credits',
-    price: 'KES 300',
+    price: 'KES 500',
     description: 'for 300 credits',
     features: [
         '300 Credits on Purchase',
