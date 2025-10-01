@@ -12,6 +12,7 @@ import TemplateATS from '../templates/TemplateATS';
 import DesignSettingsPanel from './DesignSettingsPanel';
 import SectionTogglePanel from './SectionTogglePanel';
 import LayoutManager from './LayoutManager';
+import authFetch from './authFetch';
 
 const DEFAULT_SECTION_ENTRY = {
   experience: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
@@ -72,9 +73,7 @@ const Editor = () => {
     } else if (authToken) {
       const fetchResume = async () => {
         try {
-          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
-            headers: { 'Authorization': `Bearer ${authToken}` },
-          });
+          const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`);
           if (res.ok) {
             const foundResume = await res.json();
             setLiveResume(foundResume);
