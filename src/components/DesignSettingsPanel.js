@@ -136,7 +136,7 @@ const DesignSettingsPanel = ({ design = {}, handleEdit, onClose }) => {
       </div>
 
       {/* Section Spacing */}
-      <div className="mb-4">
+      /*<div className="mb-4">
         <label className="block mb-1 font-medium">Section Spacing (rem)</label>
         <input
           type="number"
@@ -149,6 +149,7 @@ const DesignSettingsPanel = ({ design = {}, handleEdit, onClose }) => {
           className="w-full border px-2 py-1 rounded"
         />
       </div>
+      */
 
       {/* Title Color */}
       <div className="mb-4">
