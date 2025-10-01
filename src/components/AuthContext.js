@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
 
         localStorage.setItem('token', data.access);
+        localStorage.setItem('refreshToken', data.refresh);
         localStorage.setItem('user', JSON.stringify(userData)); // Store the entire user object
 
         // Guest resume migration logic remains the same
