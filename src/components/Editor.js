@@ -98,9 +98,8 @@ const Editor = () => {
       localStorage.setItem(resumeToSave.id, JSON.stringify(resumeToSave));
     } else if (authToken) {
       try {
-        await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeToSave.id}/`, {
+        await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeToSave.id}/`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ data: resumeToSave.data }),
         });
       } catch (err) {
@@ -142,9 +141,8 @@ const Editor = () => {
     const formData = new FormData();
     formData.append('profile_image', file);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
+      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${authToken}` },
         body: formData,
       });
       if (res.ok) {
@@ -175,9 +173,8 @@ const Editor = () => {
     
     setIsDeducting(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/deduct-credits/`, {
+      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/deduct-credits/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ amount: 100 }),
       });
       
