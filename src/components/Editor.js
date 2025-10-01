@@ -131,42 +131,36 @@ const Editor = () => {
     });
   }, [updateDebouncedStateAndSave]);
   
-  const uploadProfileImage = async (file) => {
-    if (!file || !authToken || resumeId.startsWith('guest-')) {
-      if (resumeId.startsWith('guest-')) {
-        alert('Please sign up or log in to save an image.');
+  const uploadProfileImage = (file) => {
+      if (!file) {
+          if (resumeId.startsWith('guest-')) {
+              alert('Please sign up or log in to save an image.');
+          }
+          return;
       }
-      return;
-    }
-    const formData = new FormData();
-    formData.append('profile_image', file);
-    try {
-      const res = await authFetch(`${process.env.REACT_APP_API_URL}/api/resumes/${resumeId}/`, {
-        method: 'PATCH',
-        body: formData,
-      });
-      if (res.ok) {
-        const updatedResumeFromServer = await res.json();
-        const newImageUrl = updatedResumeFromServer.profile_image;
-        setLiveResume(currentResume => {
-          const newResumeState = {
-            ...currentResume,
-            data: {
-              ...currentResume.data,
-              header: { ...currentResume.data.header, profileImage: newImageUrl }
-            }
-          };
-          updateDebouncedStateAndSave(newResumeState);
-          return newResumeState;
-        });
-      } else {
-        alert('Image upload failed. The file may be too large or not a valid image.');
-      }
-    } catch (err) {
-      console.error('Error uploading image:', err);
-      alert('A network error occurred during the image upload.');
-    }
-  };
+  
+      const reader = new FileReader();
+      reader.onload = () => {
+          const base64String = reader.result;
+          setLiveResume(currentResume => {
+              if (!currentResume) return null;
+              
+              const newResumeState = {
+                  ...currentResume,
+                  data: {
+                      ...currentResume.data,
+                      header: { 
+                          ...currentResume.data.header, 
+                          profileImage: base64String 
+                      }
+                  }
+              };
+              updateDebouncedStateAndSave(newResumeState);
+              return newResumeState;
+          });
+      };
+      reader.readAsDataURL(file);
+    };
 
   const deductCredits = async () => {
     if (isDeducting) return false;
