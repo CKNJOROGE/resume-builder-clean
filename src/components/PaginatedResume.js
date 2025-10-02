@@ -8,7 +8,7 @@ const PAGE_WIDTH_PX = mmToPx(210);
 const GRID_GAP_PX = 20;
 const SAFETY_MARGIN_PX = 1;
 
-const UNBREAKABLE_SECTIONS = ['books', 'skills', 'hobbies', 'myTime'];
+const UNBREAKABLE_SECTIONS = ['books', 'hobbies', 'myTime'];
 
 const sectionLabels = {
   summary: 'Summary', experience: 'Experience', education: 'Education', skills: 'Skills',
