@@ -78,6 +78,7 @@ const PaginatedResume = (props) => {
           let h = el.getBoundingClientRect().height;
 
           if (el.dataset.key.startsWith('industrialExpertise')) { h *= 0.6; } // Adjust 0.9 as needed
+          if (el.dataset.key.startsWith('skills')) { h *= 0.9; } 
 
           heights[el.dataset.key] = h;
         }
