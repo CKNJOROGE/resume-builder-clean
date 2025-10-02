@@ -137,6 +137,22 @@ export default function Homepage() {
         </div>
       </section>
 
+      {/* --- NEW VIDEO TUTORIAL SECTION --- */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-8 text-gray-800">See How It Works</h2>
+          <div className="bg-black rounded-lg shadow-2xl overflow-hidden">
+            <video
+              controls
+              className="w-full"
+              src="/videos/tutorials.mp4" // Path to your video in the 'public' folder
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      </section>
+
       {/* Why Choose Us */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12 px-4">
