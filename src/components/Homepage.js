@@ -282,7 +282,7 @@ export default function Homepage() {
             <div className="space-y-3">
               <div className="flex items-center justify-center md:justify-start">
                 <Mail className="w-4 h-4 mr-3" />
-                <a href="mailto:support@sustenirhr.com" className="hover:text-white">support@example.com</a>
+                <a href="mailto:support@sustenirhr.com" className="hover:text-white"> support@sustenirhr.com </a>
               </div>
               <div className="flex items-center justify-center md:justify-start">
                 <Phone className="w-4 h-4 mr-3" />
