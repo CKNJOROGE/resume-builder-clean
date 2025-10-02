@@ -265,13 +265,30 @@ export default function Homepage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-gray-400 py-8">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-          <p className="mb-4 md:mb-0">© {new Date().getFullYear()} Resume Builder. All rights reserved.</p>
-          <div className="flex space-x-6">
-            <Link to="/" className="hover:text-white">Home</Link>
-            <Link to="/templates" className="hover:text-white">Templates</Link>
-            <Link to="/contact" className="hover:text-white">Contact</Link>
+            <footer className="bg-gray-800 text-gray-400 py-12">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 text-center md:text-left">
+          {/* Column 1: Brand and Copyright */}
+          <div>
+            <h3 className="text-white font-bold text-xl mb-2">Resume Builder</h3>
+            <p className="mb-4">© {new Date().getFullYear()} All rights reserved.</p>
+            <div className="flex space-x-4 justify-center md:justify-start">
+              <Link to="/" className="hover:text-white text-sm">Home</Link>
+              <Link to="/select-template" className="hover:text-white text-sm">Templates</Link>
+            </div>
+          </div>
+          {/* Column 2: Contact Information */}
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-4">Contact Us</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-center md:justify-start">
+                <Mail className="w-4 h-4 mr-3" />
+                <a href="mailto:support@sustenirhr.com" className="hover:text-white">support@example.com</a>
+              </div>
+              <div className="flex items-center justify-center md:justify-start">
+                <Phone className="w-4 h-4 mr-3" />
+                <span>+254 708 497595</span>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
