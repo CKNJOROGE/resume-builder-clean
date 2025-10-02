@@ -24,10 +24,14 @@ const Paywall = () => {
     try {
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/manual-payment-confirm/`;
       
-      const res = await authFetch(apiUrl, {
-        method: 'POST',
-        body: JSON.stringify({ transaction_id: transactionId }),
-      });
+      const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ transaction_id: transactionId }),
+        });
 
       if (res.ok) {
         const data = await res.json();
