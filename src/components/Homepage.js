@@ -59,9 +59,9 @@ const pricing = [
   {
     title: 'Buy Credits',
     price: 'KES 500',
-    description: 'for 300 credits',
+    description: 'for 500 credits',
     features: [
-        '300 Credits on Purchase',
+        '500 Credits on Purchase',
         '100 Credits per PDF Download',
         'Access to All Templates',
         'AI-Powered Content Suggestions'
@@ -265,7 +265,7 @@ export default function Homepage() {
       </section>
 
       {/* Footer */}
-            <footer className="bg-gray-800 text-gray-400 py-12">
+      <footer className="bg-gray-800 text-gray-400 py-12">
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 text-center md:text-left">
           {/* Column 1: Brand and Copyright */}
           <div>
