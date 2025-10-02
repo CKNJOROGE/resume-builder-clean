@@ -246,7 +246,7 @@ export default function ProfessionalStrengthsSection({
               >
                 {!settingsMode ? (
                   <div style={{display:'flex',gap:'0.5rem',padding:'0.25rem',alignItems:'center'}}>
-                    <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={()=>addAt(idx)}>+ Entry</button>
+                    <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem', whiteSpace: 'nowrap'  }} onClick={()=>addAt(idx)}>+ Entry</button>
                     <button onClick={() => moveUp(idx)} disabled={idx === 0} style={{ opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
                     <button onClick={() => moveDown(idx)} disabled={idx === data.length - 1} style={{ opacity: idx === data.length - 1 ? 0.5 : 1, cursor: idx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
                     
