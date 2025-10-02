@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Award, Smartphone, FileText, UserPlus, Layout, Download, HelpCircle } from 'lucide-react';
+import { Award, Smartphone, FileText, UserPlus, Layout, Download, HelpCircle, Mail, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Navbar from './Navbar';
 
