@@ -11,7 +11,7 @@ const Paywall = () => {
   const [message, setMessage] = useState('');
 
   const handleConfirmPayment = async (e) => {
-    alert('Button was clicked!');
+    
     e.preventDefault();
     if (!transactionId.trim()) {
       setError('Please enter your M-Pesa transaction ID.');
