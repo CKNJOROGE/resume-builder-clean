@@ -20,6 +20,7 @@ import ProfessionalStrengthsSection from '../components/sections/ProfessionalStr
 import BooksSection from '../components/sections/BooksSection';
 import VolunteeringSection from '../components/sections/VolunteeringSection';
 import AdditionalExperienceSection from '../components/sections/AdditionalExperienceSection';
+import CustomSection from '../components/sections/CustomSection';
 
 import PaginatedResume from '../components/PaginatedResume';
 
@@ -43,6 +44,7 @@ const sectionComponentMap = {
     books: BooksSection,
     volunteering: VolunteeringSection,
     additionalExperience: AdditionalExperienceSection,
+    custom: CustomSection,
 };
 
 const TemplateModern = (props) => {
