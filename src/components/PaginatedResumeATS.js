@@ -22,6 +22,7 @@ const sectionLabels = {
   professionalStrengths: 'Professional Strengths',
   volunteering: 'Volunteering Experience',
   additionalExperience: 'Additional Experience',
+  custom: 'Custom Section', // <-- THIS LINE IS ADDED
 };
 
 const PaginatedResumeATS = (props) => {
@@ -155,9 +156,19 @@ const PaginatedResumeATS = (props) => {
       <div key={sectionKey}>
         {isFirstChunkOfSection && (
           <div>
-            <h2 style={sectionTitleStyle}>
-              {sectionLabels[sectionKey] || sectionKey.replace(/([A-Z])/g, ' $1').toUpperCase()}
-            </h2>
+            {/* --- THIS IS THE MODIFIED TITLE LOGIC --- */}
+            {sectionKey === 'custom' ? (
+              <input
+                type="text"
+                value={resumeData.customTitle || 'Custom Section'}
+                onChange={(e) => handleEdit('customTitle', e.target.value)}
+                style={{ ...sectionTitleStyle, border: '1px solid #ccc', borderRadius: '4px', padding: '2px 4px', width: '100%', boxSizing: 'border-box' }}
+              />
+            ) : (
+              <h2 style={sectionTitleStyle}>
+                {sectionLabels[sectionKey] || sectionKey.replace(/([A-Z])/g, ' $1').toUpperCase()}
+              </h2>
+            )}
             <hr style={hrStyle} />
           </div>
         )}
