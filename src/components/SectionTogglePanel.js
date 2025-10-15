@@ -19,6 +19,7 @@ const sectionLabels = {
   professionalStrengths: 'Professional Strengths',
   books: 'Books',
   volunteering: 'Volunteering',
+  custom: 'Custom Section',
 
 };
 
