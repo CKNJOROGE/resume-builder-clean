@@ -5,7 +5,7 @@ const MM_TO_PX = 96 / 25.4;
 const mmToPx = (mm) => mm * MM_TO_PX;
 const PAGE_HEIGHT_PX = mmToPx(290);
 const PAGE_WIDTH_PX = mmToPx(210);
-const GRID_GAP_PX = 20;
+// const GRID_GAP_PX = 20; // <-- REMOVED THIS
 const SAFETY_MARGIN_PX = 1;
 
 const UNBREAKABLE_SECTIONS = ['books', 'hobbies', 'myTime'];
@@ -17,6 +17,7 @@ const sectionLabels = {
   hobbies: 'Hobbies & Interests', myTime: 'My Time', industrialExpertise: 'Industrial Expertise',
   awards: 'Awards', professionalStrengths: 'Professional Strengths', books: 'Books',
   volunteering: 'Volunteering Experience', additionalExperience: 'Additional Experience',
+  custom: 'Custom Section',
 };
 
 const PaginatedResume = (props) => {
@@ -32,7 +33,10 @@ const PaginatedResume = (props) => {
   const leftMeasureRef = useRef(null);
   const rightMeasureRef = useRef(null);
 
-  const { font = 'Rubik', fontSize = 6, lineHeight = 1.6, titleColor = '#002b7f', subtitleColor = '#56acf2', margin = 1 } = design;
+  const { font = 'Rubik', fontSize = 6, lineHeight = 1.6, titleColor = '#002b7f', subtitleColor = '#56acf2', margin = 1, spacing = 1.5 } = design;
+
+  // --- THIS IS THE FIX ---
+  const spacingInPx = spacing * 16; // Assuming 1rem = 16px
 
   const totalVerticalMarginPx = mmToPx(margin * 10 * 2);
   const sectionStyle = { color: subtitleColor, fontFamily: font, fontSize: `${fontSize}px`, lineHeight };
@@ -76,10 +80,7 @@ const PaginatedResume = (props) => {
       allElements.forEach(el => {
         if (el.dataset.key) {
           let h = el.getBoundingClientRect().height;
-
-          if (el.dataset.key.startsWith('industrialExpertise')) { h *= 0.6; } // Adjust 0.9 as needed
-          if (el.dataset.key.startsWith('skills')) { h *= 0.9; } 
-
+          if (el.dataset.key.startsWith('industrialExpertise')) { h *= 0.8; }
           heights[el.dataset.key] = h;
         }
       });
@@ -104,7 +105,7 @@ const PaginatedResume = (props) => {
             const item = leftItems[leftItemIndex];
             const h = heights[item.id] || 0;
             let effectiveTitleHeight = sectionsWithTitlesPlaced.has(item.sectionKey) ? 0 : titleHeight;
-            const gap = (currentLeftHeight > 0) || (effectiveTitleHeight > 0 && Object.keys(currentPage.left).length > 0) ? GRID_GAP_PX : 0;
+            const gap = (currentLeftHeight > 0) || (effectiveTitleHeight > 0 && Object.keys(currentPage.left).length > 0) ? spacingInPx : 0;
             const heightWithSpacing = h + effectiveTitleHeight + gap;
 
             if (currentLeftHeight + heightWithSpacing <= availableHeight) {
@@ -127,7 +128,7 @@ const PaginatedResume = (props) => {
             const item = rightItems[rightItemIndex];
             const h = heights[item.id] || 0;
             let effectiveTitleHeight = sectionsWithTitlesPlaced.has(item.sectionKey) ? 0 : titleHeight;
-            const gap = (currentRightHeight > 0) || (effectiveTitleHeight > 0 && Object.keys(currentPage.right).length > 0) ? GRID_GAP_PX : 0;
+            const gap = (currentRightHeight > 0) || (effectiveTitleHeight > 0 && Object.keys(currentPage.right).length > 0) ? spacingInPx : 0;
             const heightWithSpacing = h + effectiveTitleHeight + gap;
 
             if (currentRightHeight + heightWithSpacing <= availableHeight) {
@@ -167,14 +168,14 @@ const PaginatedResume = (props) => {
       setPages(pagesArr);
       
       const pageMetrics = {
-        pageHeight: PAGE_HEIGHT_PX, headerHeight, titleHeight, spacingInPx: GRID_GAP_PX,
+        pageHeight: PAGE_HEIGHT_PX, headerHeight, titleHeight, spacingInPx: spacingInPx,
         totalVerticalMarginPx, SAFETY_MARGIN_PX
       };
       setDebugData({ pages: pagesArr, heights, pageMetrics, allItems });
     });
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [sectionRenderList, design, resumeData, headerComponent, totalVerticalMarginPx]);
+  }, [sectionRenderList, design, resumeData, headerComponent, totalVerticalMarginPx, spacingInPx]);
 
   const renderMeasurementComponent = (key) => {
     const Component = sectionComponentMap[key];
@@ -194,16 +195,29 @@ const PaginatedResume = (props) => {
   };
 
   const renderPageComponent = (sectionKey, items) => {
-    // --- THIS IS THE LINE I FIXED ---
-    const Component = sectionComponentMap[sectionKey]; // Changed 'key' to 'sectionKey'
+    const Component = sectionComponentMap[sectionKey];
     if (!Component || !items || items.length === 0) return null;
+    
     const sectionData = resumeData[sectionKey];
     const isFirstChunkOfSection = Array.isArray(sectionData) ? items.includes(0) : true;
+    
+    const titleStyle = {...headingStyle, fontSize: '14px', color: '#000000'};
+
     return (
-      <div key={sectionKey} className="no-break" style={{ marginBottom: `${GRID_GAP_PX}px` }}>
+      <div key={sectionKey} className="no-break" style={{ marginBottom: `${spacing}rem` }}>
         {isFirstChunkOfSection && (
           <div>
-            <h2 style={{...headingStyle, fontSize: '14px', color: '#000000' }} className="text-xl">{sectionLabels[sectionKey] || sectionKey}</h2>
+            {sectionKey === 'custom' ? (
+              <input
+                type="text"
+                value={resumeData.customTitle || 'Custom Section'}
+                onChange={(e) => handleEdit('customTitle', e.target.value)}
+                style={{ ...titleStyle, border: 'none', background: 'transparent', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                className="text-xl"
+              />
+            ) : (
+              <h2 style={titleStyle} className="text-xl">{sectionLabels[sectionKey] || sectionKey}</h2>
+            )}
             <hr style={{ borderTop: '2px solid #000000', margin: '0.25rem 0 0.5rem 0' }} />
           </div>
         )}
@@ -233,7 +247,7 @@ const PaginatedResume = (props) => {
         pages.map((page, pageIndex) => (
           <div key={pageIndex} className="resume-page" style={{ padding: `${margin}cm` }}>
             {pageIndex === 0 && headerComponent}
-            <div className="grid grid-cols-8 gap-5">
+            <div className="grid grid-cols-8" style={{ gap: `0 ${spacingInPx}px` }}>
               <div className="col-span-5 flex flex-col">
                 {Object.entries(page.left).map(([sectionKey, items]) => renderPageComponent(sectionKey, items))}
               </div>
@@ -246,8 +260,6 @@ const PaginatedResume = (props) => {
       ) : (
         <div className="resume-page" style={{ padding: `${margin}cm` }}></div>
       )}
-      
-      
     </>
   );
 };
