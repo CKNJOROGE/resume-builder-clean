@@ -22,13 +22,13 @@ const DEFAULT_TEMPLATE_CONFIGS = {
       projects: true, courses: false, achievements: false, languages: false, references: false,
       passions: false, hobbies: false, myTime: false, additionalExperience: false,
       awards: false, books: false, industrialExpertise: false,
-      professionalStrengths: false, volunteering: false,
+      professionalStrengths: false, volunteering: false, custom: false,
     },
     layout: {
       left: [
         'summary', 'skills', 'experience', 'projects', 'education', 'courses',
         'achievements', 'volunteering', 'additionalExperience', 'references',
-        'awards', 'passions', 'hobbies', 'industrialExpertise', 'professionalStrengths',
+        'awards', 'passions', 'hobbies', 'industrialExpertise', 'professionalStrengths', 'custom',
       ],
       right: [] 
     }
@@ -49,12 +49,12 @@ const DEFAULT_TEMPLATE_CONFIGS = {
       projects: false, courses: false, achievements: false, languages: false, references: false,
       passions: false, hobbies: false, myTime: false, additionalExperience: false,
       awards: false, books: false, industrialExpertise: false,
-      professionalStrengths: false, volunteering: false,
+      professionalStrengths: false, volunteering: false, custom: false,
     },
     layout: {
       left: [
         'summary', 'experience', 'achievements', 'projects', 'courses', 
-        'additionalExperience', 'volunteering'
+        'additionalExperience', 'volunteering', 'custom',
       ],
       right: [
         'education', 'skills', 'languages', 'awards', 'industrialExpertise',
@@ -150,6 +150,7 @@ const SelectTemplate = () => {
       books: [],
       volunteering: [],
       additionalExperience: [],
+      custom: [],
       design: defaultTemplateConfig.design,
       visibleSections: defaultTemplateConfig.visibleSections,
       layout: defaultTemplateConfig.layout,
