@@ -21,6 +21,7 @@ const sectionLabels = {
   books: 'Books',
   volunteering: 'Volunteering',
   additionalExperience: 'Additional Experience',
+  custom: 'Custom',
 };
 
 const LayoutManager = ({ layout = { left: [], right: [] }, onLayoutChange, onClose }) => {
