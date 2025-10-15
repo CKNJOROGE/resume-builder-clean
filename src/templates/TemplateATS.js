@@ -19,6 +19,7 @@ import AwardsSection from '../components/sections/AwardsSection';
 import IndustrialExpertiseSection from '../components/sections/IndustrialExpertiseSection';
 import ProfessionalStrengthsSection from '../components/sections/ProfessionalStrengthsSection';
 import VolunteeringSection from '../components/sections/VolunteeringSection';
+import CustomSection from '../components/sections/CustomSection';
 
 // Create a map to look up components by key.
 const sectionComponentMap = {
@@ -39,6 +40,7 @@ const sectionComponentMap = {
   professionalStrengths: ProfessionalStrengthsSection,
   volunteering: VolunteeringSection,
   header: HeaderSection,
+  custom: CustomSection,
 };
 
 const TemplateATS = (props) => {
