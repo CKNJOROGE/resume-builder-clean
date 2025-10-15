@@ -33,6 +33,7 @@ const DEFAULT_SECTION_ENTRY = {
   references: { name: '', title: '', contact: '' },
   myTime: { label: 'New Activity', value: 100, alignment: 'left' },
   volunteering: { title: '', organization: '', location: '', dates: '', description: '', bullets: [''] },
+  custom: { title: '', company: '', dates: '', location: '', description: '', bullets: [''] },
 };
 
 const debounce = (func, delay) => {
