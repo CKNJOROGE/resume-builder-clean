@@ -50,12 +50,15 @@ export default function ExperienceSection({
   const [localEndDate, setLocalEndDate] = useState(null);
   const [localIsPresent, setLocalIsPresent] = useState(false);
 
-  // --- NEW: State for the AI Rephrasing Feature ---
+  // --- AI Rephrasing Feature States ---
   const [selectedText, setSelectedText] = useState('');
   const [popupPosition, setPopupPosition] = useState(null);
   const [suggestion, setSuggestion] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null, field: null, bulletIndex: null });
+  
+  // --- NEW: Position-Aware Toolbar State ---
+  const [fixedToolbarPosition, setFixedToolbarPosition] = useState(null);
 
   const refs = useRef({});
   const alignRef = useRef(null);
@@ -82,11 +85,13 @@ export default function ExperienceSection({
 
   useEffect(() => {
     if (focusIdx !== null) {
+      // Auto-resize for description
       const descEl = refs.current[`desc-${focusIdx}`];
       if (descEl) {
         descEl.style.height = 'auto';
         descEl.style.height = `${descEl.scrollHeight}px`;
       }
+      // Auto-resize for bullets
       if (data[focusIdx] && data[focusIdx].bullets) {
         data[focusIdx].bullets.forEach((_, bIdx) => {
           const bulletEl = refs.current[`${focusIdx}-bullet-${bIdx}`];
@@ -96,8 +101,21 @@ export default function ExperienceSection({
           }
         });
       }
+      
+      // Update fixed toolbar position after content resize
+      const entryEl = refs.current[`entry-${focusIdx}`];
+      if (entryEl) {
+        const rect = entryEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+      
     }
-  }, [data, focusIdx]);
+  }, [data, focusIdx]); // Rerun position calculation on data/focus change
 
   useEffect(() => {
     if (focusIdx !== null && data[focusIdx]) {
@@ -148,12 +166,28 @@ export default function ExperienceSection({
   const handleFocusWithDelay = (idx) => {
     clearTimeout(blurTimeout.current);
     setFocusIdx(idx);
+
+    // --- NEW: Calculate and set the fixed toolbar position ---
+    // Use a small timeout to ensure the DOM has updated (e.g., if content has expanded)
+    setTimeout(() => {
+      const entryEl = refs.current[`entry-${idx}`];
+      if (entryEl) {
+        const rect = entryEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+    }, 0);
   };
 
   const handleBlurWithDelay = () => {
     blurTimeout.current = setTimeout(() => {
         setFocusIdx(null);
         setPopupPosition(null); // Hide AI button on blur
+        setFixedToolbarPosition(null); // <--- HIDE FIXED TOOLBAR ON BLUR
     }, 150);
   };
 
@@ -288,7 +322,7 @@ export default function ExperienceSection({
     setSettingsByIndex(prev => ({ ...prev, [focusIdx]: nextSettings }));
   };
   
-  // --- NEW: AI Feature Handlers ---
+  // --- AI Feature Handlers (Unchanged) ---
   const handleTextSelect = (e, entryIndex, field, bulletIndex = null) => {
     const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
     if (text.trim().length > 5) {
@@ -358,12 +392,13 @@ const handleRephraseClick = async () => {
     }
     setSuggestion('');
   };
+  // --- End of AI Feature Handlers ---
 
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
 
   return (
     <div >
-      {/* --- NEW: AI Button and Suggestion Modal --- */}
+      {/* --- AI Button and Suggestion Modal (Unchanged) --- */}
       {popupPosition && (
         <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
           <button
@@ -413,31 +448,15 @@ const handleRephraseClick = async () => {
         const settings  = item.settings || defaultSettings;
         const align     = item.align    || defaultAlignment;
         
-        const isFirstItemInChunk = itemsToRender ? idx === itemsToRender[0] : idx === 0;
-        const shouldFlipToolbar = isFirstOnPage && isFirstItemInChunk;
-
-        const toolbarStyle = {
-          fontSize: '1rem',
-          position: 'absolute',
-          right: 0,
-          display: 'flex',
-          gap: '0.5rem',
-          alignItems: 'center',
-          background: '#fff',
-          border: '1px solid #ddd',
-          borderRadius: '.25rem',
-          padding: '.25rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          zIndex: 10,
-          ...(shouldFlipToolbar
-            ? { top: '100%', marginTop: '0.5rem' }
-            : { top: '-3rem' }
-          ),
-        };
+        // This old logic for absolute positioning is no longer needed but we can remove related variables.
+        // const isFirstItemInChunk = itemsToRender ? idx === itemsToRender[0] : idx === 0;
+        // const shouldFlipToolbar = isFirstOnPage && isFirstItemInChunk;
 
         return (
           <div
             key={idx}
+            // --- NEW: Add the ref to the entry div ---
+            ref={el => (refs.current[`entry-${idx}`] = el)} 
             style={{
               position: 'relative',
               padding: isFocused ? '0.5rem' : '0.25rem 0.5rem',
@@ -447,9 +466,27 @@ const handleRephraseClick = async () => {
             }}
             onClick={isFocused ? undefined : () => handleFocusWithDelay(idx)}
           >
-            {isFocused && (
+            {/* --- NEW: Fixed Toolbar Rendering --- */}
+            {isFocused && fixedToolbarPosition && idx === focusIdx && ( // Also check if this entry is the one that's focused
               <div
-                style={toolbarStyle}
+                style={{
+                  fontSize: '1rem',
+                  position: 'fixed', // Key change: fixed position
+                  top: fixedToolbarPosition.top + fixedToolbarPosition.height + window.scrollY, // Position below the entry
+                  left: fixedToolbarPosition.left + window.scrollX,
+                  width: fixedToolbarPosition.width,
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px solid #ddd',
+                  borderTop: 'none',
+                  borderRadius: '0 0 .25rem .25rem',
+                  padding: '.25rem .5rem',
+                  boxShadow: '0 5px 10px rgba(0,0,0,0.1)',
+                  zIndex: 10,
+                }}
                 onMouseDown={e => e.preventDefault()}
               >
                 <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={addEntry}>+ Entry</button>
@@ -474,6 +511,9 @@ const handleRephraseClick = async () => {
                 </div>
               </div>
             )}
+            {/* --- End of Fixed Toolbar Rendering --- */}
+            
+            {/* The rest of the content remains the same */}
             <div style={{ breakInside: 'avoid', WebkitColumnBreakInside: 'avoid', pageBreakInside: 'avoid' }}>
               {settings.title && (isFocused ? (<input id={`title-${idx}`} type="text" value={item.title} onChange={e => handleFieldChange(idx, 'title', e.target.value)} onFocus={() => handleFocusWithDelay(idx)} onBlur={handleBlurWithDelay} placeholder="Job Title" style={{ width:'100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px solid #ccc', borderRadius:'.25rem', padding:'0rem', background:'#fff', outline:'none', textAlign:align, boxSizing: 'border-box', color: design.titleColor }} ref={el => (refs.current[`title-${idx}`] = el)} />) : (<div style={{ width:'100%', fontSize: `${(0.8 + offset).toFixed(3)}rem`, border: '1px', textAlign:align, whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '0rem', color: design.titleColor }} onClick={() => handleFocusWithDelay(idx)}>{item.title || 'Job Title'}</div>))}
               <div style={{ display:'flex', flexWrap:'wrap', gap:'0.1rem', marginBottom:'0.5rem' }}>
