@@ -11,24 +11,27 @@ const deepCompare = (obj1, obj2) => {
   const keys2 = Object.keys(obj2);
   if (keys1.length !== keys2.length) return false;
   for (const key of keys1) {
-    if (!keys2.includes(key) || !deepCompare(obj1[key], obj2[key])) {
+    // Only compare keys present in both objects, or handle nested deep compare
+    if (keys2.includes(key) && !deepCompare(obj1[key], obj2[key])) {
       return false;
     }
+    // If key1 is not in key2, that's already covered by length check, but for a robust deepCompare, we should check it
+    if (!keys2.includes(key)) return false; 
   }
   return true;
 };
 
 const ALIGNMENTS = ['left', 'center', 'right', 'justify'];
 const SETTINGS_OPTIONS = [
-  { key: 'title',    label: 'Course Title' },
+  { key: 'title',    label: 'Course Title' },
   { key: 'provider', label: 'Provider / Institution' },
-  { key: 'date',     label: 'Completion Date' },
+  { key: 'date',     label: 'Completion Date' },
 ];
 
 export default function CoursesSection({
   data = [],
   onEdit,
-  itemsToRender, // Added itemsToRender prop
+  itemsToRender,
   onChangeAlignment,
   sectionStyle = {},
   headingStyle = {},
@@ -39,21 +42,24 @@ export default function CoursesSection({
   const [focusIdx, setFocusIdx] = useState(null);
   const [showAlignOptions, setShowAlignOptions] = useState(false);
   const [showSettingsOptions, setShowSettingsOptions] = useState(false);
+  const [fixedToolbarPosition, setFixedToolbarPosition] = useState(null); // NEW STATE
   const [settingsByIndex, setSettingsByIndex] = useState({});
   const [alignByIndex, setAlignByIndex] = useState({});
   const [localStartDate, setLocalStartDate] = useState(null);
   const [localEndDate, setLocalEndDate] = useState(null);
 
   const refs = useRef({});
+  const cardRefs = useRef({}); // NEW REF
   const alignRef = useRef(null);
   const settingsRef = useRef(null);
   const blurTimeout = useRef(null);
-  const popupRef = useRef(null);
+  const toolbarRef = useRef(null); // Ref for the fixed toolbar container
 
-  const defaultSettings  = SETTINGS_OPTIONS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {});
+  const defaultSettings  = SETTINGS_OPTIONS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {});
   const defaultAlignment = 'left';
 
   useEffect(() => {
+    // Initialization/Cleanup
     const newSettings = {};
     const newAlignments = {};
 
@@ -70,23 +76,36 @@ export default function CoursesSection({
     if (!deepCompare(alignByIndex, newAlignments)) {
       setAlignByIndex(newAlignments);
     }
-  }, [data, defaultSettings, defaultAlignment, settingsByIndex, alignByIndex]);
+  }, [data, defaultSettings, defaultAlignment]);
 
   useEffect(() => {
+    // Auto-resize textareas and update toolbar position on data change/focusIdx
     if (focusIdx !== null) {
       const titleEl = refs.current[`title-${focusIdx}`];
       const providerEl = refs.current[`provider-${focusIdx}`];
 
       [titleEl, providerEl].forEach(el => {
-        if (el && el.tagName === 'TEXTAREA') {
+        if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
           el.style.height = 'auto';
-          el.style.height = `${el.scrollHeight}px`;
+          el.style.height = `${el.scrollHeight || el.offsetHeight}px`; // Use offsetHeight for inputs
         }
       });
+      
+      // Update fixed toolbar position after content resize
+      const cardEl = cardRefs.current[focusIdx];
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
     }
   }, [data, focusIdx]);
 
   useEffect(() => {
+    // Date Picker Management
     if (focusIdx !== null && data[focusIdx]) {
       const { startDateObj, endDateObj } = parseDatesForPicker(data[focusIdx].date);
       setLocalStartDate(startDateObj);
@@ -97,28 +116,29 @@ export default function CoursesSection({
     }
   }, [focusIdx, data]);
 
+  // UPDATED: Handle click outside logic to include the fixed toolbar
   useEffect(() => {
     function handleClickOutside(e) {
-      if (showAlignOptions    && alignRef.current    && !alignRef.current.contains(e.target)) {
-        setShowAlignOptions(false);
-      }
-      if (showSettingsOptions && settingsRef.current && !settingsRef.current.contains(e.target)) {
-        setShowSettingsOptions(false);
-      }
-      if (
-        focusIdx != null &&
-        popupRef.current &&
-        !popupRef.current.contains(e.target)
-      ) {
+      if (focusIdx === null) return;
+      
+      const clickedOnToolbar = toolbarRef.current && toolbarRef.current.contains(e.target);
+      const clickedOnCard = cardRefs.current[focusIdx] && cardRefs.current[focusIdx].contains(e.target);
+      const clickedOnDatePicker = e.target.closest('.react-datepicker-popper') || e.target.closest('.react-datepicker');
+
+      // If click is outside the card, outside the fixed toolbar, and not on the date picker popover
+      if (!clickedOnCard && !clickedOnToolbar && !clickedOnDatePicker) {
         const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
         if (!isInputField) {
           setFocusIdx(null);
+          setShowAlignOptions(false);
+          setShowSettingsOptions(false);
+          setFixedToolbarPosition(null);
         }
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAlignOptions, showSettingsOptions, focusIdx]);
+  }, [focusIdx]);
 
   useEffect(() => {
     return () => clearTimeout(blurTimeout.current);
@@ -132,19 +152,37 @@ export default function CoursesSection({
     updateData(updated);
   };
 
+  // UPDATED: handleFocus to calculate fixed toolbar position
   const handleFocus = (idx) => {
     clearTimeout(blurTimeout.current);
     setFocusIdx(idx);
+    setShowAlignOptions(false);
+    setShowSettingsOptions(false);
+
+    // Calculate and set the fixed toolbar position
+    setTimeout(() => {
+      const cardEl = cardRefs.current[idx];
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    }, 0);
   };
 
   const handleBlur = () => {
-    blurTimeout.current = setTimeout(() => setFocusIdx(null), 150);
+    // We let the useEffect handleClickOutside manage actual blur/focusIdx reset
+    // This function is mainly here to prevent the focusIdx from resetting immediately on blur, 
+    // which happens when clicking buttons inside the fixed toolbar.
   };
 
   const parseDatesForPicker = (dateString) => {
     let startDateObj = null;
     let endDateObj = null;
-
+    // (Implementation remains the same)
     if (dateString) {
       const parts = dateString.split(' - ');
       if (parts.length === 2) {
@@ -225,6 +263,7 @@ export default function CoursesSection({
     updated.splice(idx, 1);
     updateData(updated);
     setFocusIdx(null);
+    setFixedToolbarPosition(null); // Hide toolbar on remove
   };
 
   const handleMoveEntryUp = (idx) => {
@@ -232,7 +271,7 @@ export default function CoursesSection({
       const updated = [...data];
       [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
       updateData(updated);
-      setFocusIdx(idx - 1);
+      handleFocus(idx - 1);
     }
   };
 
@@ -241,12 +280,12 @@ export default function CoursesSection({
       const updated = [...data];
       [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
       updateData(updated);
-      setFocusIdx(idx + 1);
+      handleFocus(idx + 1);
     }
   };
 
-  const handleAlignClick   = () => setShowAlignOptions(s => !s);
-  const handleSelectAlign  = a => {
+  const handleAlignClick   = () => setShowAlignOptions(s => !s);
+  const handleSelectAlign  = a => {
     if (focusIdx != null) {
       const updatedData = data.map((item, index) =>
         index === focusIdx ? { ...item, align: a } : item
@@ -274,13 +313,71 @@ export default function CoursesSection({
     }));
   };
   
-  // FIX: Determine indices to render from itemsToRender (if provided) or data
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
 
   return (
     <div style={{ position: 'relative' }} onMouseDown={e => e.stopPropagation()}>
-      {/* FIX: Removed H2 title and HR */}
       
+      {/* --- NEW: Fixed Toolbar Rendering --- */}
+      {focusIdx !== null && fixedToolbarPosition && (
+        <div
+          data-toolbar="fixed"
+          ref={toolbarRef}
+          style={{
+            fontSize: '1rem',
+            position: 'fixed', 
+            top: fixedToolbarPosition.top + window.scrollY - 40, // Position slightly above the focused card
+            left: fixedToolbarPosition.left + window.scrollX,
+            width: fixedToolbarPosition.width,
+            display: 'flex',
+            justifyContent: 'flex-end', // ALIGNED TO THE RIGHT
+            gap: '0.5rem',
+            alignItems: 'center',
+            background: '#fff',
+            border: '1px solid #ddd',
+            borderRadius: '.25rem',
+            padding: '.25rem .5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            zIndex: 100,
+          }}
+          onMouseDown={e => e.preventDefault()}
+        >
+          {/* Main Controls */}
+          <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderRadius: '.2rem' }} onClick={addEntry}>+ Entry</button>
+          <button onClick={() => handleMoveEntryUp(focusIdx)} disabled={focusIdx === 0} style={{ opacity: focusIdx === 0 ? 0.5 : 1, cursor: focusIdx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
+          <button onClick={() => handleMoveEntryDown(focusIdx)} disabled={focusIdx === data.length - 1} style={{ opacity: focusIdx === data.length - 1 ? 0.5 : 1, cursor: focusIdx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
+          
+          <div ref={alignRef} style={{ position: 'relative' }}>
+            <button style={{ color: '#080808', fontSize: '' }} onClick={handleAlignClick}>T</button>
+            {showAlignOptions && (
+              <div style={{ position: 'fixed', top: fixedToolbarPosition.top + window.scrollY - 160, right: window.innerWidth - fixedToolbarPosition.left - fixedToolbarPosition.width - 20, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 110, minWidth: '80px' }}>
+                {ALIGNMENTS.map(a => (
+                  <div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer', textAlign: a, background: (alignByIndex[focusIdx] || defaultAlignment) === a ? '#e5e7eb' : 'transparent' }} onClick={() => handleSelectAlign(a)}>{a}</div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <button onClick={() => removeEntry(focusIdx)} style={{ color: '#dc2626' }}>🗑️</button>
+          
+          <div ref={settingsRef} style={{ position: 'relative' }}>
+            <button onClick={() => setShowSettingsOptions(s => !s)}>⚙️</button>
+            {showSettingsOptions && (
+              <div style={{ position: 'fixed', top: fixedToolbarPosition.top + window.scrollY - 200, right: window.innerWidth - fixedToolbarPosition.left - fixedToolbarPosition.width - 20, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '0.5rem', width: '200px', zIndex: 110 }}>
+                {SETTINGS_OPTIONS.map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.25rem 0' }}>
+                    <span style={{ fontSize: '0.875rem' }}>{label}</span>
+                    <input type="checkbox" checked={(settingsByIndex[focusIdx] || defaultSettings)[key]} onChange={() => toggleSetting(key)} style={{ cursor: 'pointer', width: '1.25rem', height: '1.25rem' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => { setFocusIdx(null); setFixedToolbarPosition(null); }} style={{ marginLeft: 'auto' }}>✕</button>
+        </div>
+      )}
+      {/* --- End of Fixed Toolbar Rendering --- */}
+
       {!itemsToRender && data.length === 0 && (
         <button
           onClick={addEntry}
@@ -297,15 +394,13 @@ export default function CoursesSection({
         </button>
       )}
 
-      {/* FIX: Map over the stable renderIndices array */}
       {renderIndices.map((idx) => {
-        if (idx >= data.length) return null; // Safeguard
+        if (idx >= data.length) return null;
 
-        // FIX: Access the item data using the stable index
         const item = data[idx];
         const isFocused = focusIdx === idx;
-        const settings  = item.settings || defaultSettings;
-        const align     = item.align    || defaultAlignment;
+        const settings  = item.settings || defaultSettings;
+        const align     = item.align    || defaultAlignment;
 
         const currentItemData = {
           title: item.title || '',
@@ -315,7 +410,8 @@ export default function CoursesSection({
 
         return (
           <div
-            key={idx} // FIX: Use stable index for the key
+            key={idx}
+            ref={el => (cardRefs.current[idx] = el)} // NEW: Store ref for position calculation
             style={{
               position: 'relative',
               backgroundColor: isFocused ? '#f9fafb' : 'transparent',
@@ -329,55 +425,8 @@ export default function CoursesSection({
             }}
             onClick={isFocused ? undefined : () => handleFocus(idx)}
           >
-            {isFocused && (
-              <div
-                ref={popupRef}
-                onMouseDown={e => e.preventDefault()}
-                style={{
-                  fontSize: '1rem',
-                  position: 'absolute',
-                  top: '-3rem',
-                  right: 0,
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'center',
-                  background: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '.25rem',
-                  padding: '.25rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  zIndex: 10
-                }}
-              >
-                <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={addEntry}>+ Entry</button>
-                <button onClick={() => handleMoveEntryUp(idx)} disabled={idx === 0} style={{ opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
-                <button onClick={() => handleMoveEntryDown(idx)} disabled={idx === data.length - 1} style={{ opacity: idx === data.length - 1 ? 0.5 : 1, cursor: idx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
-                <div ref={alignRef} style={{ position: 'relative' }}>
-                  <button style={{ color: '#080808', fontSize: '' }} onClick={handleAlignClick}>T</button>
-                  {showAlignOptions && (
-                    <div style={{ position: 'absolute', top: '-4rem', right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 11 }}>
-                      {ALIGNMENTS.map(a => (
-                        <div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer' }} onClick={() => handleSelectAlign(a)}>{a}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => removeEntry(idx)} style={{ color: '#dc2626' }}>🗑️</button>
-                <div ref={settingsRef} style={{ position: 'relative' }}>
-                  <button onClick={() => setShowSettingsOptions(s => !s)}>⚙️</button>
-                  {showSettingsOptions && (
-                    <div style={{ position: 'absolute', top: '-4rem', right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '0.5rem', width: '200px', zIndex: 11 }}>
-                      {SETTINGS_OPTIONS.map(({ key, label }) => (
-                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.25rem 0' }}>
-                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
-                          <input type="checkbox" checked={settings[key]} onChange={() => toggleSetting(key)} style={{ cursor: 'pointer', width: '1.25rem', height: '1.25rem' }} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* REMOVED INLINE TOOLBAR MARKUP */}
+
             {settings.title && (
               isFocused ? (
                 <input
