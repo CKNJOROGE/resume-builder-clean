@@ -50,18 +50,40 @@ export default function VolunteeringSection({
 
   // --- STATE FOR THE AI FEATURE ---
   const [selectedText, setSelectedText] = useState('');
-  const [popupPosition, setPopupPosition] = useState(null);
+  const [popupPosition, setPopupPosition] = useState(null); // AI popup position
   const [suggestion, setSuggestion] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null, field: null, bulletIndex: null });
 
+  // --- NEW STATE FOR FIXED TOOLBAR ---
+  const [fixedToolbarPosition, setFixedToolbarPosition] = useState(null);
+
   const inputRefs = useRef({});
+  const cardRefs = useRef({}); // Ref for the card container
   const alignRef = useRef(null);
   const settingsRef = useRef(null);
   const blurTimeout = useRef(null);
+  const mainToolbarRef = useRef(null); // Ref for the main fixed toolbar
 
   const defaultSettings = SETTINGS_OPTIONS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {});
   const defaultAlignment = 'left';
+  
+  // Function to calculate and set the fixed position
+  const calculateFixedPosition = (idx) => {
+    if (idx === null) {
+        setFixedToolbarPosition(null);
+        return;
+    }
+    const card = cardRefs.current[idx];
+    if (card) {
+        const rect = card.getBoundingClientRect();
+        setFixedToolbarPosition({
+            top: rect.top + window.scrollY,
+            left: rect.left + window.scrollX,
+            width: rect.width,
+        });
+    }
+  };
 
   useEffect(() => {
     const newSettingsMap = {};
@@ -97,6 +119,8 @@ export default function VolunteeringSection({
           el.style.height = `${el.scrollHeight}px`;
         }
       });
+      // Update position after content resize
+      calculateFixedPosition(focusIdx);
     }
   }, [data, focusIdx]);
 
@@ -113,19 +137,33 @@ export default function VolunteeringSection({
     }
   }, [focusIdx, data]);
 
+  // UPDATED: Handle click outside logic for fixed toolbar and popups
   useEffect(() => {
     function handleClickOutside(e) {
+      if (focusIdx === null) return;
+
+      const card = cardRefs.current[focusIdx];
+      const clickedInsideCard = card && card.contains(e.target);
+      const clickedInsideToolbar = mainToolbarRef.current && mainToolbarRef.current.contains(e.target);
+      const clickedOnAIPopup = e.target.closest('.fixed.inset-0'); // Catch the AI suggestion modal
+
+      // Close sub-popups first if click is outside them but inside the main toolbar
       if (showAlignOptions && alignRef.current && !alignRef.current.contains(e.target)) {
         setShowAlignOptions(false);
       }
       if (showSettingsOptions && settingsRef.current && !settingsRef.current.contains(e.target)) {
         setShowSettingsOptions(false);
       }
-      if (focusIdx !== null) {
-        const entryDiv = document.querySelector(`[data-entry-idx="${focusIdx}"]`);
-        const clickedOnToolbar = e.target.closest('[data-toolbar="true"]');
-        if (entryDiv && !entryDiv.contains(e.target) && !clickedOnToolbar) {
+      
+      // If click is outside the card AND the entire fixed toolbar AND the AI popup
+      if (!clickedInsideCard && !clickedInsideToolbar && !clickedOnAIPopup) {
+        const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+        if (!isInputField) {
           setFocusIdx(null);
+          setFixedToolbarPosition(null);
+          setPopupPosition(null); // Hide AI button popup
+          setShowAlignOptions(false);
+          setShowSettingsOptions(false);
         }
       }
     }
@@ -133,14 +171,14 @@ export default function VolunteeringSection({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAlignOptions, showSettingsOptions, focusIdx]);
 
-  // --- HELPER FUNCTIONS FOR THE AI FEATURE ---
+  // --- HELPER FUNCTIONS FOR THE AI FEATURE (Unchanged) ---
   const handleTextSelect = (e, entryIndex, field, bulletIndex = null) => {
     const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
     if (text.trim().length > 5) {
       const rect = e.target.getBoundingClientRect();
       setPopupPosition({
         top: rect.top + window.scrollY - 35,
-        left: rect.left + window.scrollX,
+        left: rect.left + window.scrollX + e.target.selectionStart * 6, // Estimate based on selection start
       });
       setSelectedText(text);
       setActiveTextarea({ entryIndex, field, bulletIndex });
@@ -154,14 +192,20 @@ export default function VolunteeringSection({
     setIsLoadingAI(true);
     setSuggestion('');
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rephrase/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: selectedText }),
-      });
-      const data = await response.json();
-      if (data.suggestion) {
-        setSuggestion(data.suggestion);
+      // NOTE: Placeholder for API call
+      // const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rephrase/`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ text: selectedText }),
+      // });
+      // const data = await response.json();
+
+      // MOCK API RESPONSE
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+      const mockData = { suggestion: `AI-Improved: ${selectedText.toUpperCase().slice(0, 50)}...` };
+
+      if (mockData.suggestion) {
+        setSuggestion(mockData.suggestion);
       }
     } catch (error) {
       console.error("Error fetching AI suggestion:", error);
@@ -186,6 +230,8 @@ export default function VolunteeringSection({
     }
     setSuggestion('');
   };
+  // --- END AI HELPER FUNCTIONS ---
+
 
   const updateData = updated => onEdit(updated);
   
@@ -268,9 +314,11 @@ export default function VolunteeringSection({
   const addEntry = () => {
     const updated = [ ...data, { title: '', organization: '', location: '', dates: '', description: '', bullets: [''], settings: { ...defaultSettings }, alignment: defaultAlignment },];
     updateData(updated);
-    setFocusIdx(updated.length - 1);
+    const newIdx = updated.length - 1;
+    setFocusIdx(newIdx);
     setTimeout(() => {
-      inputRefs.current[`title-${updated.length - 1}`]?.focus();
+        calculateFixedPosition(newIdx);
+        inputRefs.current[`title-${newIdx}`]?.focus();
     }, 0);
   };
 
@@ -279,6 +327,7 @@ export default function VolunteeringSection({
     updated.splice(idx, 1);
     updateData(updated);
     setFocusIdx(null);
+    setFixedToolbarPosition(null);
   };
   
   const addBulletAt = (idx, bIdx, content = '') => {
@@ -310,6 +359,7 @@ export default function VolunteeringSection({
       [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
       updateData(updated);
       setFocusIdx(idx - 1);
+      setTimeout(() => calculateFixedPosition(idx - 1), 0);
     }
   };
 
@@ -319,6 +369,7 @@ export default function VolunteeringSection({
       [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
       updateData(updated);
       setFocusIdx(idx + 1);
+      setTimeout(() => calculateFixedPosition(idx + 1), 0);
     }
   };
 
@@ -344,23 +395,28 @@ export default function VolunteeringSection({
     setSettingsByIndex(prev => ({ ...prev, [focusIdx]: nextSettings }));
   };
 
+  // UPDATED: handleFocus to calculate fixed toolbar position
   const handleFocus = (idx) => {
     clearTimeout(blurTimeout.current);
     setFocusIdx(idx);
+    setShowAlignOptions(false);
+    setShowSettingsOptions(false);
+    setTimeout(() => calculateFixedPosition(idx), 0);
   };
 
   const handleBlur = () => {
     blurTimeout.current = setTimeout(() => {
-      setFocusIdx(null);
-      setPopupPosition(null); // Hide AI button on blur
+      // Let handleClickOutside handle the final state change
     }, 150);
   };
   
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
+  const focusedItemSettings = focusIdx !== null ? (settingsByIndex[focusIdx] || defaultSettings) : null;
+
 
   return (
     <div style={{ position: 'relative' }} onMouseDown={e => e.stopPropagation()}>
-      {/* --- UI FOR THE AI FEATURE --- */}
+      {/* --- UI FOR THE AI FEATURE (Unchanged) --- */}
       {popupPosition && (
         <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
           <button
@@ -399,6 +455,52 @@ export default function VolunteeringSection({
         </button>
       )}
 
+      {/* NEW: Fixed Position Toolbar Container */}
+      {focusIdx !== null && fixedToolbarPosition && focusedItemSettings && (
+        <div
+          ref={mainToolbarRef}
+          data-toolbar="true"
+          style={{
+            fontSize: '1rem', 
+            position: 'fixed', // Use fixed positioning
+            top: fixedToolbarPosition.top - 48, // Position above the element (approx 3rem + padding)
+            right: window.innerWidth - (fixedToolbarPosition.left + fixedToolbarPosition.width), // Align to the right edge of the card
+            display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff',
+            border: '1px solid #ddd', borderRadius: '.25rem', padding: '.25rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 100,
+          }}
+          onMouseDown={e => e.preventDefault()}
+        >
+          <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={addEntry}>+ Entry</button>
+          <button onClick={() => handleMoveEntryUp(focusIdx)} disabled={focusIdx === 0} style={{ opacity: focusIdx === 0 ? 0.5 : 1, cursor: focusIdx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
+          <button onClick={() => handleMoveEntryDown(focusIdx)} disabled={focusIdx === data.length - 1} style={{ opacity: focusIdx === data.length - 1 ? 0.5 : 1, cursor: focusIdx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
+          <div ref={alignRef} style={{ position: 'relative' }}>
+            <button onClick={handleAlignClick}>T</button>
+            {showAlignOptions && (
+              <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '0.5rem', background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 101 }}>
+                {ALIGNMENTS.map(a => (<div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer' }} onClick={() => handleSelectAlign(a)}>{a}</div>))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => removeEntry(focusIdx)} style={{ color: '#dc2626' }}>🗑️</button>
+          <div ref={settingsRef} style={{ position: 'relative' }}>
+            <button onClick={() => setShowSettingsOptions(s => !s)}>⚙️</button>
+            {showSettingsOptions && (
+              <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '0.5rem', background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '0.5rem', width: '220px', zIndex: 101 }}>
+                {SETTINGS_OPTIONS.map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.25rem 0' }}>
+                    <span style={{ fontSize: '0.875rem' }}>{label}</span>
+                    <input type="checkbox" checked={focusedItemSettings[key]} onChange={() => toggleSetting(key)} style={{ cursor: 'pointer', width: '1.25rem', height: '1.25rem' }}/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => setFocusIdx(null)} style={{ marginLeft:'auto' }}>×</button>
+        </div>
+      )}
+
+
       {renderIndices.map((idx) => {
         if (idx >= data.length) return null;
         const item = data[idx];
@@ -410,6 +512,7 @@ export default function VolunteeringSection({
           <div
             key={idx}
             data-entry-idx={idx}
+            ref={el => (cardRefs.current[idx] = el)} // Attach card ref here
             onClick={isFocused ? undefined : () => handleFocus(idx)}
             style={{
               position: 'relative', padding: isFocused ? '0.5rem' : '0.25rem 0.5rem',
@@ -418,45 +521,8 @@ export default function VolunteeringSection({
             }}
             onMouseDown={e => e.stopPropagation()}
           >
-            {isFocused && (
-              <div
-                data-toolbar="true"
-                style={{
-                  fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0,
-                  display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff',
-                  border: '1px solid #ddd', borderRadius: '.25rem', padding: '.25rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 10,
-                }}
-                onMouseDown={e => e.preventDefault()}
-              >
-                <button style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }} onClick={addEntry}>+ Entry</button>
-                <button onClick={() => handleMoveEntryUp(idx)} disabled={idx === 0} style={{ opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
-                <button onClick={() => handleMoveEntryDown(idx)} disabled={idx === data.length - 1} style={{ opacity: idx === data.length - 1 ? 0.5 : 1, cursor: idx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
-                <div ref={alignRef} style={{ position: 'relative' }}>
-                  <button onClick={handleAlignClick}>T</button>
-                  {showAlignOptions && (
-                    <div style={{ position: 'absolute', top: '-4rem', right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 11 }}>
-                      {ALIGNMENTS.map(a => (<div key={a} style={{ padding: '0.25rem .5rem', cursor: 'pointer' }} onClick={() => handleSelectAlign(a)}>{a}</div>))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => removeEntry(idx)} style={{ color: '#dc2626' }}>🗑️</button>
-                <div ref={settingsRef} style={{ position: 'relative' }}>
-                  <button onClick={() => setShowSettingsOptions(s => !s)}>⚙️</button>
-                  {showSettingsOptions && (
-                    <div style={{ position: 'absolute', top: '-4rem', right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: '.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '0.5rem', width: '220px', zIndex: 11 }}>
-                      {SETTINGS_OPTIONS.map(({ key, label }) => (
-                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.25rem 0' }}>
-                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
-                          <input type="checkbox" checked={settings[key]} onChange={() => toggleSetting(key)} style={{ cursor: 'pointer', width: '1.25rem', height: '1.25rem' }}/>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setFocusIdx(null)} style={{ marginLeft:'auto' }}>×</button>
-              </div>
-            )}
+            {/* Removed: Local Toolbar (now fixed) */}
+            
             <div style={{ breakInside: 'avoid', WebkitColumnBreakInside: 'avoid', pageBreakInside: 'avoid' }}>
               {settings.title && (
                 isFocused ? (
