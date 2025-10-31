@@ -27,6 +27,8 @@ export default function AwardsSection({
   const offset = sliderPx / 30;
   const [activeIdx, setActiveIdx] = useState(null);
   const [settingsMode, setSettingsMode] = useState(false);
+  const [fixedToolbarPosition, setFixedToolbarPosition] = useState(null); // NEW STATE
+
   const cardRefs = useRef({});
   const popupRef = useRef(null);
   const refs = useRef({});
@@ -50,6 +52,7 @@ export default function AwardsSection({
 
   useEffect(() => {
     if (activeIdx !== null) {
+      // Auto-resize textareas
       const nameEl = refs.current[`name-${activeIdx}`];
       const descEl = refs.current[`desc-${activeIdx}`];
       [nameEl, descEl].forEach(el => {
@@ -58,20 +61,34 @@ export default function AwardsSection({
           el.style.height = `${el.scrollHeight}px`;
         }
       });
+
+      // Update fixed toolbar position after content resize
+      const cardEl = cardRefs.current[activeIdx];
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
     }
   }, [data, activeIdx]);
 
+  // UPDATED: Handle click outside logic
   useEffect(() => {
     const handleClickOutside = e => {
       if (activeIdx == null) return;
       const cardEl = cardRefs.current[activeIdx];
-      const clickedInsideCardOrToolbar = (cardEl && cardEl.contains(e.target)) || (popupRef.current && popupRef.current.contains(e.target));
+      const clickedOnToolbar = e.target.closest('[data-toolbar="fixed"]');
 
-      if (!clickedInsideCardOrToolbar) {
+      // If click is outside the card and not on the fixed toolbar
+      if (cardEl && !cardEl.contains(e.target) && !clickedOnToolbar) {
         const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
         if (!isInputField) {
           setActiveIdx(null);
           setSettingsMode(false);
+          setFixedToolbarPosition(null);
         }
       }
     };
@@ -98,6 +115,7 @@ export default function AwardsSection({
     commit(copy);
     setActiveIdx(null);
     setSettingsMode(false);
+    setFixedToolbarPosition(null); // Hide toolbar on remove
   };
 
   const moveUp = idx => {
@@ -121,33 +139,95 @@ export default function AwardsSection({
     commit(copy);
   };
 
-  const toggleCard = idx => {
-    if (activeIdx === idx) {
-      setActiveIdx(null);
-      setSettingsMode(false);
-    } else {
-      setActiveIdx(idx);
-      setSettingsMode(false);
-    }
-  };
-
+  // UPDATED: handleFocus to calculate fixed toolbar position
   const handleFocus = (idx) => {
     clearTimeout(blurTimeout.current);
     setActiveIdx(idx);
+    setSettingsMode(false);
+
+    // Calculate and set the fixed toolbar position
+    setTimeout(() => {
+      const cardEl = cardRefs.current[idx];
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    }, 0);
   };
 
   const handleBlur = () => {
-    blurTimeout.current = setTimeout(() => setActiveIdx(null), 150);
+    // Keep this simple to manage the focus/blur logic with the fixed toolbar
   };
 
-  // FIX: Determine indices to render from itemsToRender (if provided) or data
   const renderIndices = itemsToRender && itemsToRender.length > 0 ? itemsToRender : data.map((_, i) => i);
 
   return (
-    <div>
+    <div style={{ position: 'relative' }} onMouseDown={e => e.stopPropagation()}>
+
+      {/* --- NEW: Fixed Toolbar Rendering --- */}
+      {activeIdx !== null && fixedToolbarPosition && (
+        <div
+          data-toolbar="fixed"
+          ref={popupRef}
+          style={{
+            fontSize: '1rem',
+            position: 'fixed', 
+            top: fixedToolbarPosition.top + window.scrollY - 40, // Position slightly above the focused card
+            left: fixedToolbarPosition.left + window.scrollX,
+            width: fixedToolbarPosition.width,
+            display: 'flex',
+            justifyContent: 'flex-end', // ALIGNED TO THE RIGHT
+            gap: '0.5rem',
+            alignItems: 'center',
+            background: '#fff',
+            border: '1px solid #ddd',
+            borderRadius: '.25rem',
+            padding: '.25rem .5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            zIndex: 100,
+          }}
+          onMouseDown={e => e.preventDefault()}
+        >
+          {/* Toolbar Content - Settings Mode vs. Main Controls */}
+          {!settingsMode ? (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', justifyContent: 'flex-end' }}>
+              <button onClick={() => addAt(activeIdx)} style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderRadius: '.2rem' }}>➕ Entry</button>
+              <button onClick={() => moveUp(activeIdx)} disabled={activeIdx === 0} style={{ opacity: activeIdx === 0 ? 0.5 : 1, cursor: activeIdx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
+              <button onClick={() => moveDown(activeIdx)} disabled={activeIdx === data.length - 1} style={{ opacity: activeIdx === data.length - 1 ? 0.5 : 1, cursor: activeIdx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
+              <button onClick={() => removeAt(activeIdx)} style={{ color: '#dc2626' }}>🗑️</button>
+              <button onClick={() => setSettingsMode(true)}>⚙️</button>
+              <button onClick={() => { setActiveIdx(null); setSettingsMode(false); setFixedToolbarPosition(null); }} style={{ marginLeft: 'auto' }}>✕</button>
+            </div>
+          ) : (
+            <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', width: '100%' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}><input type="checkbox" checked={data[activeIdx]?.showIcon ?? DEFAULT.showIcon} onChange={e => {e.stopPropagation(); changeAt(activeIdx, 'showIcon', e.target.checked);}} /> Show Icon</label>
+              {(data[activeIdx]?.showIcon ?? DEFAULT.showIcon) && (<div style={{ marginTop: '0.5rem', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.25rem' }}>
+                {ICONS.map(iconName => {
+                  const IconComponent = ICON_MAP[iconName];
+                  return (
+                    <IconComponent
+                      key={iconName}
+                      onClick={() => changeAt(activeIdx, 'icon', iconName)}
+                      style={{ opacity: (data[activeIdx]?.icon ?? DEFAULT.icon) === iconName ? 1 : 0.5, width: '1.5rem', height: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                    />
+                  );
+                })}
+              </div>)}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem' }}><input type="checkbox" checked={data[activeIdx]?.showDescription ?? DEFAULT.showDescription} onChange={e => {e.stopPropagation(); changeAt(activeIdx, 'showDescription', e.target.checked);}} /> Show Description</label>
+              <button onClick={() => setSettingsMode(false)} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}>← Back</button>
+            </div>
+          )}
+        </div>
+      )}
+      {/* --- End of Fixed Toolbar Rendering --- */}
+
       {!itemsToRender && data.length === 0 && (
         <button
-          onClick={() => { commit([{ ...DEFAULT }]); setActiveIdx(0); }}
+          onClick={() => { commit([{ ...DEFAULT }]); handleFocus(0); }} // Use handleFocus
           style={{
             ...sectionStyle,
             fontSize: '0.875rem', color: '#2563EB', background: 'transparent',
@@ -158,11 +238,9 @@ export default function AwardsSection({
         </button>
       )}
 
-      {/* FIX: Map over the stable renderIndices array */}
       {renderIndices.map((idx) => {
-        if (idx >= data.length) return null; // Safeguard
+        if (idx >= data.length) return null;
 
-        // FIX: Access the item data using the stable index
         const item = data[idx];
         const isActive = idx === activeIdx;
         const {
@@ -179,9 +257,9 @@ export default function AwardsSection({
 
         return (
           <div
-            key={idx} // FIX: Use stable index for the key
+            key={idx}
             ref={el => (cardRefs.current[idx] = el)}
-            onClick={isActive ? undefined : () => toggleCard(idx)}
+            onClick={isActive ? undefined : () => handleFocus(idx)}
             style={{
               ...sectionStyle,
               position: 'relative',
@@ -195,47 +273,14 @@ export default function AwardsSection({
               borderRadius: isActive ? '0.375rem' : '0',
             }}
           >
-            {isActive && (
-              <div ref={popupRef} onMouseDown={e => e.preventDefault()} style={{ fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0, display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', border: '1px solid #ccc', borderRadius: '0.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.1)', zIndex: 10, minWidth: '160px' }}>
-                {!settingsMode ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', padding: '0.25rem', alignItems: 'center' }}>
-                    <button onClick={() => addAt(idx)}>➕ Entry</button>
-                    <button onClick={() => moveUp(idx)} disabled={idx === 0} style={{ opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
-                    <button onClick={() => moveDown(idx)} disabled={idx === data.length - 1} style={{ opacity: idx === data.length - 1 ? 0.5 : 1, cursor: idx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
-                    <button onClick={() => removeAt(idx)}>🗑️</button>
-                    <button onClick={() => setSettingsMode(true)}>⚙️</button>
-                    <button onClick={() => { setActiveIdx(null); setSettingsMode(false); }} style={{ marginLeft: 'auto' }}>✕</button>
-                  </div>
-                ) : (
-                  <div style={{ padding: '0.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={showIcon} onChange={e => {e.stopPropagation(); changeAt(idx, 'showIcon', e.target.checked);}} /> Show Icon</label>
-                    {showIcon && (<div style={{ marginTop: '0.5rem', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.25rem' }}>
-                      {ICONS.map(iconName => {
-                        const IconComponent = ICON_MAP[iconName];
-                        return (
-                          
-                          <IconComponent
-                            key={iconName}
-                            onClick={() => changeAt(idx, 'icon', iconName)}
-                            className="w-6 h-6 cursor-pointer text-gray-500"
-                            style={{ opacity: icon === iconName ? 1 : 0.5 }}
-                          />
-                        );
-                      })}
-                    </div>)}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}><input type="checkbox" checked={showDescription} onChange={e => {e.stopPropagation(); changeAt(idx, 'showDescription', e.target.checked);}} /> Show Description</label>
-                    <button onClick={() => setSettingsMode(false)} style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer' }}>← Back</button>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* REMOVED INLINE TOOLBAR MARKUP */}
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
               {showIcon && !disableIcons && (() => {
                 const IconComponent = ICON_MAP[icon];
                 return IconComponent ? (
-                <div className="pdf-icon-wrapper">
-                  <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 " />
+                <div className="pdf-icon-wrapper" style={{ paddingTop: '0.1rem' }}>
+                  <IconComponent className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0 " style={{ width: '1.2rem', height: '1.2rem', color: design.titleColor }}/>
                 </div>) : null;
               })()}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
