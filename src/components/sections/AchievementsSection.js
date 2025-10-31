@@ -35,11 +35,14 @@ export default function AchievementsSection({
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTextarea, setActiveTextarea] = useState({ entryIndex: null, field: null });
 
+  // --- NEW: Position-Aware Toolbar State ---
+  const [fixedToolbarPosition, setFixedToolbarPosition] = useState(null);
+
   const refs = useRef({});
   const alignRef = useRef(null);
   const settingsRef = useRef(null);
   const blurTimeout = useRef(null);
-  const popupRef = useRef(null);
+  // popupRef is no longer needed to hide the toolbar on blur since we use the main entry ref/state.
 
   const defaultSettings = SETTINGS_OPTIONS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {});
   const defaultAlignment = 'left';
@@ -62,6 +65,7 @@ export default function AchievementsSection({
 
   useEffect(() => {
     if (focusIdx !== null) {
+      // Auto-resize textareas
       const titleEl = refs.current[`title-${focusIdx}`];
       const descEl = refs.current[`desc-${focusIdx}`];
       [titleEl, descEl].forEach(el => {
@@ -70,6 +74,18 @@ export default function AchievementsSection({
           el.style.height = `${el.scrollHeight}px`;
         }
       });
+      
+      // Update fixed toolbar position after content resize
+      const entryEl = refs.current[`entry-${focusIdx}`];
+      if (entryEl) {
+        const rect = entryEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
     }
   }, [data, focusIdx]);
 
@@ -81,16 +97,10 @@ export default function AchievementsSection({
       if (showSettings && settingsRef.current && !settingsRef.current.contains(e.target)) {
         setShowSettings(false);
       }
-      if (focusIdx != null && popupRef.current && !popupRef.current.contains(e.target)) {
-        const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
-        if (!isInputField) {
-          setFocusIdx(null);
-        }
-      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAlignOptions, showSettings, focusIdx]);
+  }, [showAlignOptions, showSettings]);
 
   const update = arr => onEdit(arr);
 
@@ -99,7 +109,7 @@ export default function AchievementsSection({
     update(arr);
   };
 
-  // --- HELPER FUNCTIONS FOR THE AI FEATURE ---
+  // --- HELPER FUNCTIONS FOR THE AI FEATURE (Unchanged) ---
   const handleTextSelect = (e, entryIndex, field) => {
     const text = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
     if (text.trim().length > 5) {
@@ -147,18 +157,36 @@ export default function AchievementsSection({
     handleField(entryIndex, field, updatedText);
     setSuggestion('');
   };
+  // --- End of AI Feature Handlers ---
 
+  // --- UPDATED Focus and Blur Handlers ---
   const handleFocus = (idx) => {
     clearTimeout(blurTimeout.current);
     setFocusIdx(idx);
+
+    // Calculate and set the fixed toolbar position
+    setTimeout(() => {
+      const entryEl = refs.current[`entry-${idx}`];
+      if (entryEl) {
+        const rect = entryEl.getBoundingClientRect();
+        setFixedToolbarPosition({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+    }, 0);
   };
 
   const handleBlur = () => {
     blurTimeout.current = setTimeout(() => {
       setFocusIdx(null);
-      setPopupPosition(null); // Hide AI button on blur
+      setPopupPosition(null);
+      setFixedToolbarPosition(null); // <-- Hide fixed toolbar
     }, 150);
   };
+  // --- End of Focus/Blur Updates ---
 
   const addEntry = () => {
     const newEntry = {
@@ -236,7 +264,7 @@ export default function AchievementsSection({
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* --- UI FOR THE AI FEATURE --- */}
+      {/* --- UI FOR THE AI FEATURE (Unchanged) --- */}
       {popupPosition && (
         <div style={{ position: 'fixed', top: popupPosition.top, left: popupPosition.left, zIndex: 100 }}>
           <button
@@ -286,6 +314,8 @@ export default function AchievementsSection({
         return (
           <div
             key={idx}
+            // --- NEW: Add the ref to the entry div ---
+            ref={el => (refs.current[`entry-${idx}`] = el)} 
             style={{
               position: 'relative', padding: isFocused ? '0.25rem' : '0.15rem 0.15rem',
               background: isFocused ? '#f9fafb' : 'transparent', borderRadius: '.375rem',
@@ -295,18 +325,31 @@ export default function AchievementsSection({
             }}
             onClick={isFocused ? undefined : () => handleFocus(idx)}
           >
-            {isFocused && (
+            
+            {/* --- NEW: Fixed Toolbar Rendering --- */}
+            {isFocused && fixedToolbarPosition && idx === focusIdx && (
               <div
-                ref={popupRef}
                 onMouseDown={e => e.preventDefault()}
                 style={{
-                  fontSize: '1rem', position: 'absolute', top: '-3rem', right: 0,
-                  display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff',
-                  border: '1px solid #ddd', borderRadius: '.25rem', padding: '.25rem .5rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 10
+                  fontSize: '1rem',
+                  position: 'fixed', // Key change: fixed position
+                  top: fixedToolbarPosition.top + fixedToolbarPosition.height + window.scrollY, // Position below the entry
+                  left: fixedToolbarPosition.left + window.scrollX,
+                  width: fixedToolbarPosition.width,
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px solid #ddd',
+                  borderTop: 'none',
+                  borderRadius: '0 0 .25rem .25rem',
+                  padding: '.25rem .5rem',
+                  boxShadow: '0 5px 10px rgba(0,0,0,0.1)',
+                  zIndex: 10,
                 }}
               >
-                <button onClick={addEntry}>➕ Entry</button>
+                <button onClick={addEntry} style={{ backgroundColor: '#23ad17', color: '#ffffff', border: '0.1px solid #ddd', padding: '4px', borderTopLeftRadius: '.4rem', borderBottomLeftRadius: '.4rem' }}>➕ Entry</button>
                 <button onClick={() => handleMoveEntryUp(idx)} disabled={idx === 0} style={{ opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}>⬆️</button>
                 <button onClick={() => handleMoveEntryDown(idx)} disabled={idx === data.length - 1} style={{ opacity: idx === data.length - 1 ? 0.5 : 1, cursor: idx === data.length - 1 ? 'not-allowed' : 'pointer' }}>⬇️</button>
                 <div ref={alignRef} style={{ position: 'relative' }}>
@@ -346,7 +389,8 @@ export default function AchievementsSection({
                 </div>
               </div>
             )}
-            
+            {/* --- End of Fixed Toolbar Rendering --- */}
+
             <div style={{ display: 'flex', gap: '.2rem', marginBottom: currentItemData.description.trim() ? '.15rem' : '0', alignItems: 'flex-start' }}>
               {currentItemData.showIcon && !disableIcons && (() => {
                 const IconComponent = ICON_MAP[currentItemData.icon];
